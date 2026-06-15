@@ -30,34 +30,18 @@ def home():
     return render_template('index.html')
 
 # Route API pour les prédictions
-@app.route('/predict', methods=['POST'])
-def predict():
-    if not model:
-        return jsonify({'status': 'error', 'message': 'Modèle indisponible'}), 500
+@app.route('/api/live-data', methods=['GET'])
+def get_live_data():
     try:
-        data = request.get_json()
-        input_data = pd.DataFrame([{
-            'cpu_usage_pct': data['cpu_usage_pct'],
-            'ram_usage_pct': data['ram_usage_pct'],
-            'cpu_temperature_celsius': data['cpu_temperature_celsius'],
-            'disk_io_rate': data['disk_io_rate'],
-            'network_latency_ms': data['network_latency_ms']
-        }])
-        
-        prediction = int(model.predict(input_data)[0])
-        probabilities = model.predict_proba(input_data)[0].tolist()
-        
-        return jsonify({
-            'status': 'success',
-            'prediction': prediction,
-            'probabilities': {
-                'optimal': probabilities[0],
-                'warning': probabilities[1],
-                'critical': probabilities[2]
-            }
-        })
+        if engine is None:
+            raise Exception("Moteur SQL non initialisé")
+            
+        query = "SELECT * FROM server_metrics ORDER BY timestamp DESC LIMIT 5;"
+        df = pd.read_sql_query(query, engine)
+        return jsonify(df.to_dict(orient='records'))
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 400
+        cpu = round(random.uniform(20.0, 75.0), 1)
+        temp = round(random.uniform(45.0, 70.0), 1)
 
 # Route API pour récupérer les dernières données en base 
 import random
