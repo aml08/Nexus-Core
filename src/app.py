@@ -13,16 +13,16 @@ app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
 # Récupération de l'URL PostgreSQL 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql+psycopg2://postgres:postgres@localhost:5432/nexus_db')
-engine = create_engine(DATABASE_URL)
 
-# Chargement du modèle IA
-MODEL_PATH = os.path.join(BASE_DIR, '..', 'models', 'random_forest_model.pkl')
+engine = None
 try:
-    model = joblib.load(MODEL_PATH)
-    print("Modèle IA chargé avec succès.")
-except Exception as e:
-    print(f"Erreur chargement modèle : {e}")
-    model = None
+    engine = create_engine(DATABASE_URL)
+    # Petit test rapide pour voir si la base répond
+    with engine.connect() as conn:
+        print("Connexion à la base de données PostgreSQL réussie.")
+except Exception as db_err:
+    print(f"Avertissement : Base de données non joignable (normal en mode démo Cloud) : {db_err}")
+    engine = None
 
 # Route principale 
 @app.route('/')
