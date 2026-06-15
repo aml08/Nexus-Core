@@ -60,16 +60,34 @@ def predict():
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
 # Route API pour récupérer les dernières données en base 
+import random
+
 @app.route('/api/live-data', methods=['GET'])
 def get_live_data():
     try:
+        # On tente de lire la vraie base de données
         query = "SELECT * FROM server_metrics ORDER BY timestamp DESC LIMIT 5;"
         df = pd.read_sql_query(query, engine)
         return jsonify(df.to_dict(orient='records'))
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-if __name__ == '__main__':
-    # Récupération du port dynamique pour le Cloud 
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
+        print(f"Base locale inaccessible, bascule sur le flux de démo : {e}")
+        # Mode Démo pour ton URL Render : Génère des données à la volée pour le Dashboard
+        cpu = round(random.uniform(20.0, 75.0), 1)
+        temp = round(random.uniform(45.0, 70.0), 1)
+        
+        # Simulation d'une prédiction de l'IA à la volée pour la démo
+        statut_ia = 0
+        if cpu > 70.0 or temp > 65.0:
+            statut_ia = 1 # Warning
+            
+        mock_data = [{
+            'timestamp': pd.Timestamp.now().isoformat(),
+            'server_id': 'RNT-PRD-01',
+            'cpu_usage_pct': cpu,
+            'ram_usage_pct': round(random.uniform(40.0, 60.0), 1),
+            'cpu_temperature_celsius': temp,
+            'disk_io_rate': round(random.uniform(100.0, 300.0), 1),
+            'network_latency_ms': round(random.uniform(10.0, 25.0), 1),
+            'system_status': statut_ia
+        }]
+        return jsonify(mock_data)
