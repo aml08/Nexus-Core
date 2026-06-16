@@ -6,14 +6,13 @@ let radarChartInstance = null;
 let currentSite = 'RNT-PRD-01';
 let historiqueCompletTableau = [];
 
-// Variables de gestion du temps et de stabilisation pour l'opérateur humain
 let modeCriseActif = false;
 let configurationsClignotementActuelles = { cpu: false, temp: false };
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     rafraichirDashboard();
-    setInterval(rafraichirDashboard, 5000); // Rafraîchissement calme toutes les 5 secondes
+    setInterval(rafraichirDashboard, 5000); 
     simulerScenario();
 });
 
@@ -72,7 +71,6 @@ function appliquerStyleClignotement(elementId, activer) {
 }
 
 function rafraichirDashboard() {
-    // Si l'opérateur est en train d'analyser une crise figée à l'écran, on stoppe la mise à jour des compteurs
     if (modeCriseActif) {
         return; 
     }
@@ -92,6 +90,7 @@ function rafraichirDashboard() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         model_key: 'random_forest',
+                        site_id: currentSite,
                         cpu_usage_pct: trame.cpu_usage_pct,
                         ram_usage_pct: trame.ram_usage_pct,
                         cpu_temperature_celsius: trame.cpu_temperature_celsius,
@@ -138,15 +137,12 @@ function rafraichirDashboard() {
                                 declencherTemp = true;
                             }
 
-                            // Message purement opérationnel et humain
                             alertText.innerHTML = `<b>Diagnostic de sécurité - Centre de Supervision :</b><br>Des anomalies physiques majeures compromettent la stabilité du site <b>${currentSite}</b> :<br>• ${causes.join('<br>• ')}.<br><span class="text-red-400 font-bold">Action requise : Déploiement d'une équipe technique sous un délai de 3 heures pour éviter l'arrêt des serveurs.</span>`;
                             
-                            // Déclenchement simultané de l'alerte et des clignotements ciblés
                             alertBox.classList.remove('hidden');
                             if (declencherCPU) appliquerStyleClignotement('cpu-value', true);
                             if (declencherTemp) appliquerStyleClignotement('temp-value', true);
 
-                            // ACTIVATION DU FREEZE OPÉRATEUR : On fige l'écran pendant 20 secondes pour permettre la lecture stable
                             modeCriseActif = true;
                             setTimeout(() => {
                                 modeCriseActif = false; 
@@ -265,21 +261,21 @@ function simulerScenario() {
         card.className = "bg-red-950/40 p-6 rounded-xl border border-red-900 flex flex-col justify-center items-center text-center transition-all duration-300";
         icon.className = "p-4 bg-red-900 text-red-200 rounded-full mb-3";
         icon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-3xl"></i>`;
-        status.innerText = "Analyse préventive : Risque d'avarie critique";
+        status.innerText = "Évaluation : Risque d'avarie critique";
         status.className = "text-lg font-black text-red-400 uppercase";
         text.innerText = `Le profil thermique simulé dépasse les limites de tolérance constructeur. Risque de coupure matérielle imminent.`;
     } else if (cpu > 65 || temp > 68 || lat > 60) {
         card.className = "bg-yellow-950/40 p-6 rounded-xl border border-yellow-900 flex flex-col justify-center items-center text-center transition-all duration-300";
         icon.className = "p-4 bg-yellow-900 text-yellow-200 rounded-full mb-3";
         icon.innerHTML = `<i class="fa-solid fa-circle-exclamation text-3xl"></i>`;
-        status.innerText = "Analyse préventive : Seuil d'alerte atteint";
+        status.innerText = "Évaluation : Seuil d'alerte atteint";
         status.className = "text-lg font-black text-yellow-500 uppercase";
         text.innerText = `L'infrastructure entre en zone de fatigue thermique. Des ralentissements de services sont à prévoir.`;
     } else {
         card.className = "bg-gray-950 p-6 rounded-xl border border-gray-800 flex flex-col justify-center items-center text-center transition-all duration-300";
         icon.className = "p-4 bg-green-950/50 text-green-400 rounded-full mb-3";
         icon.innerHTML = `<i class="fa-solid fa-square-check text-3xl"></i>`;
-        status.innerText = "Analyse préventive : Structure Résiliente";
+        status.innerText = "Évaluation : Structure Résiliente";
         status.className = "text-lg font-black text-green-400 uppercase";
         text.innerText = `Les charges simulées sont parfaitement absorbées par le système. Stabilité garantie.`;
     }
@@ -315,44 +311,4 @@ function exportToPDF() {
     doc.text(`REGISTRE DE TÉLÉMÉTRIE CAPTEURS - SITE ${currentSite}`, 14, 15);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Rapport d'extraction édité le : ${new Date().toLocaleString('fr-FR')}`, 14, 22);
-
-    const tableRows = [];
-    historiqueCompletTableau.forEach(row => {
-        tableRows.push([row.horodatage, row.site, row.cpu + ' %', row.ram + ' %', row.temp + ' °C', row.latence + ' ms']);
-    });
-
-    doc.autoTable({
-        head: [['Horodatage', 'Code Installation', 'Charge CPU', 'Mémoire RAM', 'Température', 'Latence']],
-        body: tableRows,
-        startY: 28,
-        theme: 'striped',
-        headStyles: { fillColor: [30, 41, 59] }
-    });
-
-    doc.save(`rapport_site_${currentSite}.pdf`);
-}
-
-function switchTab(tabId) {
-    document.getElementById('page-dashboard').classList.add('hidden');
-    document.getElementById('page-analytics').classList.add('hidden');
-    document.getElementById('page-logs').classList.add('hidden');
-
-    document.getElementById('btn-dashboard').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
-    document.getElementById('btn-analytics').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
-    document.getElementById('btn-logs').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
-
-    if (tabId === 'dashboard') {
-        document.getElementById('page-dashboard').classList.remove('hidden');
-        document.getElementById('btn-dashboard').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        document.getElementById('page-title').innerText = "Supervision Multi-Sites";
-    } else if (tabId === 'analytics') {
-        document.getElementById('page-analytics').classList.remove('hidden');
-        document.getElementById('btn-analytics').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        document.getElementById('page-title').innerText = "Gestion & Planification Prédictive";
-    } else if (tabId === 'logs') {
-        document.getElementById('page-logs').classList.remove('hidden');
-        document.getElementById('btn-logs').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        document.getElementById('page-title').innerText = "Historique des Données";
-    }
-}
+    doc.text(`Rapport d'extraction édité le : ${new Date().toLocaleString('fr-FR')}`,
