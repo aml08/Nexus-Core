@@ -24,8 +24,8 @@
                     <span>Supervision Multi-Sites</span>
                 </button>
                 <button onclick="switchTab('analytics')" id="btn-analytics" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all">
-                    <i class="fa-solid0 fa-microchip w-5"></i>
-                    <span>Rapport d'Audit Technique</span>
+                    <i class="fa-solid fa-sliders w-5"></i>
+                    <span>Gestion & Planification</span>
                 </button>
                 <button onclick="switchTab('logs')" id="btn-logs" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all">
                     <i class="fa-solid fa-database w-5"></i>
@@ -59,7 +59,6 @@
         <main class="p-8 space-y-8 flex-1">
 
             <section id="page-dashboard" class="space-y-8">
-                
                 <div id="predictive-alert-box" class="hidden bg-red-950/60 border border-red-900 rounded-xl p-5 flex items-center space-x-4">
                     <div class="p-3 bg-red-900 rounded-lg text-red-200">
                         <i class="fa-solid fa-triangle-exclamation text-xl"></i>
@@ -117,16 +116,88 @@
                 </div>
             </section>
 
-            <section id="page-analytics" class="space-y-6 hidden">
-                <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                    <h3 class="text-lg font-bold text-white mb-2">Rapport d'Évaluation Statistique</h3>
-                    <p class="text-sm text-gray-400 mb-6">Comparatif de performance des architectures de classification calculé sur l'historique de 25 923 lignes de données.</p>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="comparison-cards"></div>
-                </div>
+            <section id="page-analytics" class="space-y-8 hidden">
                 
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                    <h3 class="text-base font-bold text-white mb-4">Indicateurs Métriques de Précision</h3>
-                    <div id="detailed-metrics" class="space-y-4"></div>
+                    <h3 class="text-base font-bold text-white mb-4"><i class="fa-solid fa-chart-pie text-blue-500 mr-2"></i>Bilan de Santé Globale & Éco-Efficience</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 text-center">
+                            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Taux de Disponibilité (Uptime)</span>
+                            <p class="text-3xl font-black text-green-400 mt-2">99.84 %</p>
+                            <span class="text-xs text-gray-500 block mt-1">Fonctionnement nominal ce mois</span>
+                        </div>
+                        <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 text-center">
+                            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Indice d'Usure Thermique</span>
+                            <p id="kpi-usure" class="text-3xl font-black text-yellow-500 mt-2">12.4 %</p>
+                            <span class="text-xs text-gray-500 block mt-1">Stress cumulé des processeurs</span>
+                        </div>
+                        <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 text-center">
+                            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider font-mono">Éco-Efficience (PUE)</span>
+                            <p class="text-3xl font-black text-blue-400 mt-2">1.21</p>
+                            <span class="text-xs text-gray-500 block mt-1">Excellent rendement énergétique</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-base font-bold text-white"><i class="fa-solid fa-calendar-check text-purple-500 mr-2"></i>Ordres de Travail Automatisés</h3>
+                        <span class="text-xs bg-gray-800 px-3 py-1 rounded-full text-gray-400 font-semibold font-mono">Généré par Analyse Prédictive</span>
+                    </div>
+                    <div class="overflow-x-auto rounded-lg border border-gray-800">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-950 text-gray-400 text-xs uppercase font-bold border-b border-gray-800">
+                                    <th class="p-3">ID Tâche</th>
+                                    <th class="p-3">Site Ciblé</th>
+                                    <th class="p-3">Intervention Préconisée</th>
+                                    <th class="p-3">Priorité</th>
+                                    <th class="p-3">Statut Équipe</th>
+                                </tr>
+                            </thead>
+                            <tbody id="planningTableBody" class="divide-y divide-gray-800 text-sm text-gray-300">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
+                    <h3 class="text-base font-bold text-white mb-2"><i class="fa-solid fa-flask-vial text-yellow-500 mr-2"></i>Simulateur de Charge & Stress-Test Numérique</h3>
+                    <p class="text-xs text-gray-400 mb-6">Ajustez les curseurs pour éprouver la robustesse de l'infrastructure et observer la réponse instantanée de l'algorithme de diagnostic.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-4 bg-gray-950 p-5 rounded-xl border border-gray-800">
+                            <div>
+                                <div class="flex justify-between text-xs font-bold mb-1">
+                                    <span class="text-purple-400">SIMULATION CHARGE CPU</span>
+                                    <span id="val-sim-cpu" class="text-white">45 %</span>
+                                </div>
+                                <input type="range" id="sim-cpu" min="10" max="100" value="45" oninput="simulerScenario()" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-bold mb-1">
+                                    <span class="text-yellow-500">SIMULATION TEMPÉRATURE</span>
+                                    <span id="val-sim-temp" class="text-white">52 °C</span>
+                                </div>
+                                <input type="range" id="sim-temp" min="30" max="95" value="52" oninput="simulerScenario()" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-bold mb-1">
+                                    <span class="text-green-400">SIMULATION LATENCE RÉSEAU</span>
+                                    <span id="val-sim-lat" class="text-white">15 ms</span>
+                                </div>
+                                <input type="range" id="sim-lat" min="2" max="150" value="15" oninput="simulerScenario()" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-green-400">
+                            </div>
+                        </div>
+                        
+                        <div id="sim-response-card" class="bg-gray-950 p-6 rounded-xl border border-gray-800 flex flex-col justify-center items-center text-center transition-all duration-300">
+                            <div id="sim-icon" class="p-4 bg-green-950/50 text-green-400 rounded-full mb-3">
+                                <i class="fa-solid fa-shield-halved text-3xl"></i>
+                            </div>
+                            <h4 id="sim-status" class="text-lg font-black text-green-400 uppercase">État de Résilience : Nominal</h4>
+                            <p id="sim-text" class="text-xs text-gray-400 mt-2 max-w-sm">Le profil de charge simulé respecte parfaitement les marges opérationnelles du système. Risque de panne nul.</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
