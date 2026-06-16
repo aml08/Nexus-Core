@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Core - Predictive Maintenance Enterprise</title>
+    <title>Nexus Core - Maintenance Prédictive</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans flex h-screen overflow-hidden">
 
     <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col justify-between hidden md:flex">
         <div class="p-6">
             <div class="flex items-center space-x-3 mb-8">
-                <i class="fa-solid fa-industry text-2xl text-blue-500 animate-pulse"></i>
-                <span class="text-xl font-black tracking-wider text-white">NEXUS ENTERPRISE</span>
+                <i class="fa-solid fa-industry text-2xl text-blue-500"></i>
+                <span class="text-xl font-black tracking-wider text-white">NEXUS CORE</span>
             </div>
             <nav class="space-y-2">
                 <button onclick="switchTab('dashboard')" id="btn-dashboard" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all">
@@ -22,12 +24,12 @@
                     <span>Supervision Multi-Sites</span>
                 </button>
                 <button onclick="switchTab('analytics')" id="btn-analytics" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all">
-                    <i class="fa-solid fa-microchip w-5"></i>
-                    <span>Rapport d'Audit IA</span>
+                    <i class="fa-solid0 fa-microchip w-5"></i>
+                    <span>Rapport d'Audit Technique</span>
                 </button>
                 <button onclick="switchTab('logs')" id="btn-logs" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all">
                     <i class="fa-solid fa-database w-5"></i>
-                    <span>Registre SQL (Brut)</span>
+                    <span>Historique des Données</span>
                 </button>
             </nav>
         </div>
@@ -58,20 +60,20 @@
 
             <section id="page-dashboard" class="space-y-8">
                 
-                <div id="predictive-alert-box" class="hidden bg-red-950/40 border border-red-900 rounded-xl p-4 flex items-center space-x-4 animate-pulse">
+                <div id="predictive-alert-box" class="hidden bg-red-950/60 border border-red-900 rounded-xl p-5 flex items-center space-x-4">
                     <div class="p-3 bg-red-900 rounded-lg text-red-200">
                         <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                     </div>
                     <div>
-                        <h4 class="text-red-200 font-bold text-sm">ALERTE MAINTENANCE PRÉDICTIVE (IA)</h4>
-                        <p class="text-red-300 text-xs mt-0.5" id="predictive-alert-text">Anomalie détectée.</p>
+                        <h4 class="text-red-200 font-bold text-sm">ALERTE MAINTENANCE PRÉDICTIVE</h4>
+                        <p class="text-red-300 text-xs mt-0.5" id="predictive-alert-text"></p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between">
                         <div>
-                            <h3 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Diagnostic Actuel</h3>
+                            <h3 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Diagnostic Système</h3>
                             <p id="status-value" class="text-2xl font-black text-gray-400 mt-1">Analyse...</p>
                         </div>
                         <div class="p-4 bg-gray-800 rounded-xl"><i class="fa-solid fa-heart-pulse text-2xl text-blue-400"></i></div>
@@ -107,7 +109,7 @@
                         </div>
                     </div>
                     <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                        <h3 class="text-base font-bold text-white mb-6">Probabilités d'Anomalie</h3>
+                        <h3 class="text-base font-bold text-white mb-6">Probabilités de Panne</h3>
                         <div class="h-64 flex items-center justify-center">
                             <canvas id="radarChart"></canvas>
                         </div>
@@ -117,30 +119,44 @@
 
             <section id="page-analytics" class="space-y-6 hidden">
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                    <h3 class="text-lg font-bold text-white mb-2">Rapport d'Évaluation des Algorithmes</h3>
-                    <p class="text-sm text-gray-400 mb-6">Ce rapport valide le choix de l'algorithme de production d'après l'analyse comparative effectuée sur l'historique de 25 923 trosses de données.</p>
+                    <h3 class="text-lg font-bold text-white mb-2">Rapport d'Évaluation Statistique</h3>
+                    <p class="text-sm text-gray-400 mb-6">Comparatif de performance des architectures de classification calculé sur l'historique de 25 923 lignes de données.</p>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="comparison-cards"></div>
                 </div>
                 
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                    <h3 class="text-base font-bold text-white mb-4">Matrice de Confusion et Métriques par Modèle</h3>
+                    <h3 class="text-base font-bold text-white mb-4">Indicateurs Métriques de Précision</h3>
                     <div id="detailed-metrics" class="space-y-4"></div>
                 </div>
             </section>
 
             <section id="page-logs" class="space-y-6 hidden">
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                    <h3 class="text-base font-bold text-white mb-4">Registre des Signaux SQL Ingestis</h3>
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div>
+                            <h3 class="text-base font-bold text-white">Registre des Données Capteurs</h3>
+                            <p class="text-xs text-gray-400 mt-0.5">Données lues en base de données PostgreSQL</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button onclick="exportToCSV()" class="bg-gray-800 hover:bg-gray-700 text-xs font-semibold px-4 py-2 rounded-lg border border-gray-700 text-gray-200 transition-all">
+                                <i class="fa-solid fa-file-csv mr-2 text-green-500"></i>Exporter en CSV
+                            </button>
+                            <button onclick="exportToPDF()" class="bg-gray-800 hover:bg-gray-700 text-xs font-semibold px-4 py-2 rounded-lg border border-gray-700 text-gray-200 transition-all">
+                                <i class="fa-solid fa-file-pdf mr-2 text-red-500"></i>Télécharger le PDF
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div class="overflow-x-auto rounded-lg border border-gray-800">
-                        <table class="w-full text-left border-collapse">
+                        <table id="dataTable" class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-950 text-gray-400 text-xs uppercase font-bold border-b border-gray-800">
                                     <th class="p-4">Horodatage</th>
-                                    <th class="p-4">Site</th>
+                                    <th class="p-4">Code Site</th>
                                     <th class="p-4">CPU (%)</th>
                                     <th class="p-4">RAM (%)</th>
                                     <th class="p-4">Température (°C)</th>
-                                    <th class="p-4">Latence</th>
+                                    <th class="p-4">Latence (ms)</th>
                                 </tr>
                             </thead>
                             <tbody id="logsTableBody" class="divide-y divide-gray-800 text-sm font-mono text-gray-300"></tbody>
