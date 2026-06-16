@@ -4,12 +4,13 @@ let donneesTemp = [];
 let lineChartInstance = null;
 let radarChartInstance = null;
 let currentSite = 'RNT-PRD-01';
+let historiqueCompletTableau = []; // Stockage permanent pour l'exportation
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     rafraichirDashboard();
     loadModelComparison();
-    setInterval(rafraichirDashboard, 2000);
+    setInterval(rafraichirDashboard, 5000); // Frequence de rafraichissement baissee a 5 secondes
 });
 
 function initCharts() {
@@ -23,14 +24,14 @@ function initCharts() {
                 { label: 'Température (°C)', data: donneesTemp, borderColor: 'rgb(234, 179, 8)', backgroundColor: 'rgba(234, 179, 8, 0.1)', tension: 0.3, fill: true }
             ]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#f3f4f6' } } } }
+        options: { responsive: true, maintainAspectRatio: false, animation: { duration: 400 } }
     });
 
     const ctxRadar = document.getElementById('radarChart').getContext('2d');
     radarChartInstance = new Chart(ctxRadar, {
         type: 'radar',
         data: {
-            labels: ['Optimal', 'Warning', 'Critical'],
+            labels: ['Nominal', 'Alerte', 'Critique'],
             datasets: [{ label: 'Statut Probable', data: [0, 0, 0], backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgb(59, 130, 246)' }]
         },
         options: { responsive: true, maintainAspectRatio: false }
@@ -43,6 +44,7 @@ function changeActiveSite(siteKey) {
     donneesCPU = [];
     donneesTemp = [];
     document.getElementById('logsTableBody').innerHTML = '';
+    rafraichirDashboard();
 }
 
 function rafraichirDashboard() {
@@ -56,7 +58,6 @@ function rafraichirDashboard() {
                 document.getElementById('temp-value').innerText = trame.cpu_temperature_celsius + ' °C';
                 document.getElementById('latency-value').innerText = trame.network_latency_ms + ' ms';
 
-                // Appel transparent du meilleur modele (Random Forest)
                 fetch('/predict', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -89,9 +90,7 @@ function rafraichirDashboard() {
                         } else {
                             statutElement.innerText = '🚨 Critique';
                             statutElement.className = "text-xl font-black text-red-500 mt-1";
-                            
-                            // Generation dynamique de la notification previsible pour le métier
-                            alertText.innerText = `Le site ${currentSite} montre des signes d'anomalies systemes severes. Risque d'interruption logicielle estime dans les prochaines 3 heures.`;
+                            alertText.innerText = `Anomalie lourde detectee sur le site ${currentSite}. Risque d'interruption materielle estime sous un delai de 3 heures.`;
                             alertBox.classList.remove('hidden');
                         }
 
@@ -116,9 +115,19 @@ function rafraichirDashboard() {
                 }
                 lineChartInstance.update();
 
+                // Ajout de la trame dans notre registre de sauvegarde permanent pour export
+                historiqueCompletTableau.unshift({
+                    horodatage: heureFormat,
+                    site: trame.server_id,
+                    cpu: trame.cpu_usage_pct,
+                    ram: trame.ram_usage_pct,
+                    temp: trame.cpu_temperature_celsius,
+                    latence: trame.network_latency_ms
+                });
+
                 const tableBody = document.getElementById('logsTableBody');
                 const nouvelleLigne = document.createElement('tr');
-                nouvelleLigne.className = "hover:bg-gray-900 border-b border-gray-800";
+                nouvelleLigne.className = "hover:bg-gray-900 border-b border-gray-800 transition-all";
                 nouvelleLigne.innerHTML = `
                     <td class="p-4 text-blue-400">${heureFormat}</td>
                     <td class="p-4 text-xs font-bold text-gray-400">${trame.server_id}</td>
@@ -128,7 +137,7 @@ function rafraichirDashboard() {
                     <td class="p-4 text-green-400">${trame.network_latency_ms} ms</td>
                 `;
                 tableBody.insertBefore(nouvelleLigne, tableBody.firstChild);
-                if (tableBody.children.length > 10) tableBody.removeChild(tableBody.lastChild);
+                if (tableBody.children.length > 50) tableBody.removeChild(tableBody.lastChild);
             }
         })
         .catch(err => console.error('Erreur:', err));
@@ -143,25 +152,87 @@ function loadModelComparison() {
             cardsContainer.innerHTML = '';
             detailsContainer.innerHTML = '';
 
+            // Lecture correcte des cles du dictionnaire JSON
             for (const [modelName, metrics] of Object.entries(data)) {
+                const cleanName = modelName.replace('_', ' ');
+                
                 const card = document.createElement('div');
-                card.className = "bg-gray-950 border border-gray-800 rounded-xl p-4 text-center";
+                card.className = "bg-gray-950 border border-gray-800 rounded-xl p-6 text-center shadow-inner";
                 card.innerHTML = `
-                    <span class="text-xs text-gray-400 uppercase font-bold">${modelName.replace('_', ' ')}</span>
-                    <p class="text-2xl font-black text-blue-500 mt-1">${metrics.accuracy} %</p>
+                    <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">${cleanName}</span>
+                    <p class="text-3xl font-black text-blue-500 mt-2">${metrics.accuracy} %</p>
+                    <span class="text-xs text-gray-500 block mt-1">Taux de precision global</span>
                 `;
                 cardsContainer.appendChild(card);
 
                 const detailSection = document.createElement('div');
-                detailSection.className = "bg-gray-950 p-4 rounded-lg border border-gray-800 font-mono text-xs text-gray-400";
+                detailSection.className = "bg-gray-950 p-4 rounded-lg border border-gray-800 font-mono text-xs text-gray-400 space-y-1";
+                
+                // Extraction securisee des sous-metriques du rapport de classification
+                const prec0 = (metrics.report['0'].precision * 100).toFixed(1) + '%';
+                const rec0 = (metrics.report['0'].recall * 100).toFixed(1) + '%';
+                const prec2 = (metrics.report['2'] ? (metrics.report['2'].precision * 100).toFixed(1) + '%' : 'N/A');
+                const rec2 = (metrics.report['2'] ? (metrics.report['2'].recall * 100).toFixed(1) + '%' : 'N/A');
+
                 detailSection.innerHTML = `
-                    <h4 class="text-white font-bold mb-1 uppercase">${modelName.replace('_', ' ')}</h4>
-                    <p>Précision Générale (Accuracy): ${metrics.accuracy}%</p>
+                    <h4 class="text-white font-bold mb-2 uppercase text-sm">${cleanName}</h4>
+                    <p class="text-gray-300">-> Classe Statut Optimal  | Precision: ${prec0} | Rappel (Recall): ${rec0}</p>
+                    <p class="text-red-400">-> Classe Statut Critique | Precision: ${prec2} | Rappel (Recall): ${rec2}</p>
                 `;
                 detailsContainer.appendChild(detailSection);
             }
         })
-        .catch(err => console.log('Attente du fichier de comparaison...'));
+        .catch(err => console.log('Flux en cours de synchronisation...'));
+}
+
+// Fonction d'exportation au format CSV
+function exportToCSV() {
+    if (historiqueCompletTableau.length === 0) {
+        alert("Aucune donnee disponible pour le moment.");
+        return;
+    }
+    let csvContent = "data:text/csv;charset=utf-8,Horodatage,Site,CPU (%),RAM (%),Temperature (C),Latence (ms)\n";
+    historiqueCompletTableau.forEach(row => {
+        csvContent += `${row.horodatage},${row.site},${row.cpu},${row.ram},${row.temp},${row.latence}\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `nexus_registre_${currentSite}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Fonction d'exportation au format PDF
+function exportToPDF() {
+    if (historiqueCompletTableau.length === 0) {
+        alert("Aucune donnee disponible pour le moment.");
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    doc.setFont("helvetica", "bold");
+    doc.text(`RAPPORT DE REGISTRE DES DONNEES - SITE ${currentSite}`, 14, 15);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Genere le : ${new Date().toLocaleString('fr-FR')}`, 14, 22);
+
+    const tableRows = [];
+    historiqueCompletTableau.forEach(row => {
+        tableRows.push([row.horodatage, row.site, row.cpu + ' %', row.ram + ' %', row.temp + ' °C', row.latence + ' ms']);
+    });
+
+    doc.autoTable({
+        head: [['Horodatage', 'Site', 'CPU', 'RAM', 'Temperature', 'Latence']],
+        body: tableRows,
+        startY: 28,
+        theme: 'striped',
+        headStyles: { fillColor: [30, 41, 59] }
+    });
+
+    doc.save(`rapport_nexus_${currentSite}.pdf`);
 }
 
 function switchTab(tabId) {
@@ -180,10 +251,10 @@ function switchTab(tabId) {
     } else if (tabId === 'analytics') {
         document.getElementById('page-analytics').classList.remove('hidden');
         document.getElementById('btn-analytics').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        document.getElementById('page-title').innerText = "Rapport d'Audit Évaluation Algorithmique";
+        document.getElementById('page-title').innerText = "Rapport d'Audit Technique";
     } else if (tabId === 'logs') {
         document.getElementById('page-logs').classList.remove('hidden');
         document.getElementById('btn-logs').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        document.getElementById('page-title').innerText = "Registre des Signaux SQL Ingestis";
+        document.getElementById('page-title').innerText = "Historique des Données";
     }
 }
