@@ -3,7 +3,7 @@ let donneesCPU = [];
 let donneesTemp = [];
 let lineChartInstance = null;
 let radarChartInstance = null;
-let currentModelKey = 'random_forest';
+let currentSite = 'RNT-PRD-01';
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
@@ -19,33 +19,11 @@ function initCharts() {
         data: {
             labels: labelsChronologiques,
             datasets: [
-                {
-                    label: 'CPU Usage (%)',
-                    data: donneesCPU,
-                    borderColor: 'rgb(147, 51, 234)',
-                    backgroundColor: 'rgba(147, 51, 234, 0.1)',
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'Température (°C)',
-                    data: donneesTemp,
-                    borderColor: 'rgb(234, 179, 8)',
-                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
-                    tension: 0.3,
-                    fill: true
-                }
+                { label: 'CPU (%)', data: donneesCPU, borderColor: 'rgb(147, 51, 234)', backgroundColor: 'rgba(147, 51, 234, 0.1)', tension: 0.3, fill: true },
+                { label: 'Température (°C)', data: donneesTemp, borderColor: 'rgb(234, 179, 8)', backgroundColor: 'rgba(234, 179, 8, 0.1)', tension: 0.3, fill: true }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { grid: { color: '#1f2937' }, ticks: { color: '#9ca3af' } },
-                x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
-            },
-            plugins: { legend: { labels: { color: '#f3f4f6' } } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#f3f4f6' } } } }
     });
 
     const ctxRadar = document.getElementById('radarChart').getContext('2d');
@@ -53,37 +31,22 @@ function initCharts() {
         type: 'radar',
         data: {
             labels: ['Optimal', 'Warning', 'Critical'],
-            datasets: [{
-                label: 'Vecteur d\'Analyse',
-                data: [0, 0, 0],
-                backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                borderColor: 'rgb(59, 130, 246)',
-                pointBackgroundColor: 'rgb(59, 130, 246)'
-            }]
+            datasets: [{ label: 'Statut Probable', data: [0, 0, 0], backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgb(59, 130, 246)' }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                r: {
-                    grid: { color: '#374151' },
-                    angleLines: { color: '#374151' },
-                    ticks: { display: false },
-                    pointLabels: { color: '#9ca3af', font: { size: 11 } }
-                }
-            },
-            plugins: { legend: { display: false } }
-        }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 }
 
-function changeActiveModel(modelKey) {
-    currentModelKey = modelKey;
-    console.log("Modèle actif changé pour : " + modelKey);
+function changeActiveSite(siteKey) {
+    currentSite = siteKey;
+    labelsChronologiques = [];
+    donneesCPU = [];
+    donneesTemp = [];
+    document.getElementById('logsTableBody').innerHTML = '';
 }
 
 function rafraichirDashboard() {
-    fetch('/api/live-data')
+    fetch(`/api/live-data?site=${currentSite}`)
         .then(response => response.json())
         .then(data => {
             if (data && data.length > 0) {
@@ -93,12 +56,12 @@ function rafraichirDashboard() {
                 document.getElementById('temp-value').innerText = trame.cpu_temperature_celsius + ' °C';
                 document.getElementById('latency-value').innerText = trame.network_latency_ms + ' ms';
 
-                // Envoi des données au modèle sélectionné pour prédiction
+                // Appel transparent du meilleur modele (Random Forest)
                 fetch('/predict', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        model_key: currentModelKey,
+                        model_key: 'random_forest',
                         cpu_usage_pct: trame.cpu_usage_pct,
                         ram_usage_pct: trame.ram_usage_pct,
                         cpu_temperature_celsius: trame.cpu_temperature_celsius,
@@ -109,17 +72,27 @@ function rafraichirDashboard() {
                 .then(res => res.json())
                 .then(predResult => {
                     const statutElement = document.getElementById('status-value');
+                    const alertBox = document.getElementById('predictive-alert-box');
+                    const alertText = document.getElementById('predictive-alert-text');
+                    
                     if (predResult.status === 'success') {
                         const pred = predResult.prediction;
+                        
                         if (pred === 0) {
-                            statutElement.innerText = '🛡️ Optimal';
+                            statutElement.innerText = '🛡️ Nominal';
                             statutElement.className = "text-xl font-black text-green-400 mt-1";
+                            alertBox.classList.add('hidden');
                         } else if (pred === 1) {
-                            statutElement.innerText = '⚠️ Warning';
+                            statutElement.innerText = '⚠️ Alerte';
                             statutElement.className = "text-xl font-black text-yellow-500 mt-1";
+                            alertBox.classList.add('hidden');
                         } else {
-                            statutElement.innerText = '🚨 Critical';
+                            statutElement.innerText = '🚨 Critique';
                             statutElement.className = "text-xl font-black text-red-500 mt-1";
+                            
+                            // Generation dynamique de la notification previsible pour le métier
+                            alertText.innerText = `Le site ${currentSite} montre des signes d'anomalies systemes severes. Risque d'interruption logicielle estime dans les prochaines 3 heures.`;
+                            alertBox.classList.remove('hidden');
                         }
 
                         radarChartInstance.data.datasets[0].data = [
@@ -145,19 +118,17 @@ function rafraichirDashboard() {
 
                 const tableBody = document.getElementById('logsTableBody');
                 const nouvelleLigne = document.createElement('tr');
-                nouvelleLigne.className = "hover:bg-gray-900 transition-all";
+                nouvelleLigne.className = "hover:bg-gray-900 border-b border-gray-800";
                 nouvelleLigne.innerHTML = `
                     <td class="p-4 text-blue-400">${heureFormat}</td>
+                    <td class="p-4 text-xs font-bold text-gray-400">${trame.server_id}</td>
                     <td class="p-4">${trame.cpu_usage_pct} %</td>
                     <td class="p-4">${trame.ram_usage_pct} %</td>
                     <td class="p-4 text-yellow-500">${trame.cpu_temperature_celsius} °C</td>
-                    <td class="p-4">${trame.disk_io_rate} mb/s</td>
                     <td class="p-4 text-green-400">${trame.network_latency_ms} ms</td>
                 `;
                 tableBody.insertBefore(nouvelleLigne, tableBody.firstChild);
-                if (tableBody.children.length > 15) {
-                    tableBody.removeChild(tableBody.lastChild);
-                }
+                if (tableBody.children.length > 10) tableBody.removeChild(tableBody.lastChild);
             }
         })
         .catch(err => console.error('Erreur:', err));
@@ -173,33 +144,24 @@ function loadModelComparison() {
             detailsContainer.innerHTML = '';
 
             for (const [modelName, metrics] of Object.entries(data)) {
-                // Injection des cartes globales
                 const card = document.createElement('div');
-                card.className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl text-center";
+                card.className = "bg-gray-950 border border-gray-800 rounded-xl p-4 text-center";
                 card.innerHTML = `
-                    <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">${modelName.replace('_', ' ')}</span>
-                    <p class="text-3xl font-extrabold text-blue-400 mt-2">${metrics.accuracy} %</p>
-                    <span class="text-xs text-gray-500 block mt-1">Précision globale</span>
+                    <span class="text-xs text-gray-400 uppercase font-bold">${modelName.replace('_', ' ')}</span>
+                    <p class="text-2xl font-black text-blue-500 mt-1">${metrics.accuracy} %</p>
                 `;
                 cardsContainer.appendChild(card);
 
-                // Injection des rapports détaillés par classe
                 const detailSection = document.createElement('div');
-                detailSection.className = "bg-gray-950 p-4 rounded-lg border border-gray-800 font-mono text-xs text-gray-400 overflow-x-auto";
+                detailSection.className = "bg-gray-950 p-4 rounded-lg border border-gray-800 font-mono text-xs text-gray-400";
                 detailSection.innerHTML = `
-                    <h4 class="text-white font-bold mb-2 uppercase text-sm">${modelName.replace('_', ' ')}</h4>
-                    <p>Classe 0 (Optimal)  -> Precision: ${roundMetric(metrics.report['0'].precision)}, Recall: ${roundMetric(metrics.report['0'].recall)}, F1-Score: ${roundMetric(metrics.report['0'].f1-score)}</p>
-                    <p>Classe 1 (Warning)  -> Precision: ${roundMetric(metrics.report['1'].precision)}, Recall: ${roundMetric(metrics.report['1'].recall)}, F1-Score: ${roundMetric(metrics.report['1'].f1-score)}</p>
-                    <p>Classe 2 (Critical) -> Precision: ${roundMetric(metrics.report['2'].precision)}, Recall: ${roundMetric(metrics.report['2'].recall)}, F1-Score: ${roundMetric(metrics.report['2'].f1-score)}</p>
+                    <h4 class="text-white font-bold mb-1 uppercase">${modelName.replace('_', ' ')}</h4>
+                    <p>Précision Générale (Accuracy): ${metrics.accuracy}%</p>
                 `;
                 detailsContainer.appendChild(detailSection);
             }
         })
-        .catch(err => console.error('Erreur chargement métriques:', err));
-}
-
-function roundMetric(val) {
-    return (val * 100).toFixed(2) + '%';
+        .catch(err => console.log('Attente du fichier de comparaison...'));
 }
 
 function switchTab(tabId) {
@@ -214,14 +176,14 @@ function switchTab(tabId) {
     if (tabId === 'dashboard') {
         document.getElementById('page-dashboard').classList.remove('hidden');
         document.getElementById('btn-dashboard').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        document.getElementById('page-title').innerText = "Tableau de Bord Télémétrie";
+        document.getElementById('page-title').innerText = "Supervision Multi-Sites";
     } else if (tabId === 'analytics') {
         document.getElementById('page-analytics').classList.remove('hidden');
         document.getElementById('btn-analytics').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        document.getElementById('page-title').innerText = "Comparateur de Modèles Algorithmiques";
+        document.getElementById('page-title').innerText = "Rapport d'Audit Évaluation Algorithmique";
     } else if (tabId === 'logs') {
         document.getElementById('page-logs').classList.remove('hidden');
         document.getElementById('btn-logs').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        document.getElementById('page-title').innerText = "Registre Historique Base de Données";
+        document.getElementById('page-title').innerText = "Registre des Signaux SQL Ingestis";
     }
 }
