@@ -6,14 +6,15 @@ let radarChartInstance = null;
 let currentSite = 'RNT-PRD-01';
 let historiqueCompletTableau = [];
 
-let clignotementVerrouille = false;
+// Variables de gestion du temps et de stabilisation pour l'opérateur humain
+let modeCriseActif = false;
 let configurationsClignotementActuelles = { cpu: false, temp: false };
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     rafraichirDashboard();
-    setInterval(rafraichirDashboard, 5000);
-    simulerScenario(); // Initie le simulateur au chargement
+    setInterval(rafraichirDashboard, 5000); // Rafraîchissement calme toutes les 5 secondes
+    simulerScenario();
 });
 
 function initCharts() {
@@ -23,11 +24,11 @@ function initCharts() {
         data: {
             labels: labelsChronologiques,
             datasets: [
-                { label: 'CPU (%)', data: donneesCPU, borderColor: 'rgb(147, 51, 234)', backgroundColor: 'rgba(147, 51, 234, 0.1)', tension: 0.3, fill: true },
-                { label: 'Température (°C)', data: donneesTemp, borderColor: 'rgb(234, 179, 8)', backgroundColor: 'rgba(234, 179, 8, 0.1)', tension: 0.3, fill: true }
+                { label: 'Charge CPU (%)', borderColor: 'rgb(147, 51, 234)', data: donneesCPU, backgroundColor: 'rgba(147, 51, 234, 0.1)', tension: 0.3, fill: true },
+                { label: 'Température (°C)', borderColor: 'rgb(234, 179, 8)', data: donneesTemp, backgroundColor: 'rgba(234, 179, 8, 0.1)', tension: 0.3, fill: true }
             ]
         },
-        options: { responsive: true, maintainAspectRatio: false, animation: { duration: 400 } }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 
     const ctxRadar = document.getElementById('radarChart').getContext('2d');
@@ -35,7 +36,7 @@ function initCharts() {
         type: 'radar',
         data: {
             labels: ['Nominal', 'Alerte', 'Critique'],
-            datasets: [{ label: 'Statut Probable', data: [0, 0, 0], backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgb(59, 130, 246)' }]
+            datasets: [{ label: 'Niveau de Risque', data: [0, 0, 0], backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgb(59, 130, 246)' }]
         },
         options: { responsive: true, maintainAspectRatio: false }
     });
@@ -48,7 +49,7 @@ function changeActiveSite(siteKey) {
     donneesTemp = [];
     document.getElementById('logsTableBody').innerHTML = '';
     document.getElementById('predictive-alert-box').classList.add('hidden');
-    clignotementVerrouille = false;
+    modeCriseActif = false;
     stopperTousLesClignotements();
     rafraichirDashboard();
 }
@@ -71,6 +72,11 @@ function appliquerStyleClignotement(elementId, activer) {
 }
 
 function rafraichirDashboard() {
+    // Si l'opérateur est en train d'analyser une crise figée à l'écran, on stoppe la mise à jour des compteurs
+    if (modeCriseActif) {
+        return; 
+    }
+
     fetch(`/api/live-data?site=${currentSite}`)
         .then(response => response.json())
         .then(data => {
@@ -99,7 +105,7 @@ function rafraichirDashboard() {
                     const alertBox = document.getElementById('predictive-alert-box');
                     const alertText = document.getElementById('predictive-alert-text');
                     
-                    let applicationCritiqueActive = false;
+                    let estCritique = false;
 
                     if (predResult.status === 'success') {
                         const pred = predResult.prediction;
@@ -108,58 +114,46 @@ function rafraichirDashboard() {
                             statutElement.innerText = '🛡️ Nominal';
                             statutElement.className = "text-xl font-black text-green-400 mt-1";
                             alertBox.classList.add('hidden');
-                            if (!clignotementVerrouille) stopperTousLesClignotements();
+                            stopperTousLesClignotements();
                         } else if (pred === 1) {
-                            statutElement.innerText = '⚠️ Alerte';
+                            statutElement.innerText = '⚠️ Vigilance';
                             statutElement.className = "text-xl font-black text-yellow-500 mt-1";
                             alertBox.classList.add('hidden');
-                            if (!clignotementVerrouille) stopperTousLesClignotements();
+                            stopperTousLesClignotements();
                         } else {
-                            applicationCritiqueActive = true;
-                            statutElement.innerText = '🚨 Critique';
+                            estCritique = true;
+                            statutElement.innerText = '🚨 Incident Imminent';
                             statutElement.className = "text-xl font-black text-red-500 mt-1";
                             
                             let causes = [];
-                            let declencherClignotementCPU = false;
-                            let declencherClignotementTemp = false;
+                            let declencherCPU = false;
+                            let declencherTemp = false;
 
                             if (trame.cpu_usage_pct > 70) {
-                                causes.push(`Surcharge CPU de ${trame.cpu_usage_pct}% (Seuil max conseillé: 70%)`);
-                                declencherClignotementCPU = true;
+                                causes.push(`Surcharge d'activité processeur à ${trame.cpu_usage_pct}% (Seuil de sécurité : 70%)`);
+                                declencherCPU = true;
                             }
-                            if (trame.ram_usage_pct > 70) {
-                                causes.push(`Saturation de la mémoire RAM à ${trame.ram_usage_pct}%`);
-                            }
-                            if (trame.cpu_temperature_celsius > 75) {
-                                causes.push(`Surchauffe thermique détectée au cœur des processeurs (${trame.cpu_temperature_celsius}°C)`);
-                                declencherClignotementTemp = true;
-                            }
-                            if (causes.length === 0) {
-                                causes.push("Anomalie système globale non linéaire identifiée");
+                            if (trame.cpu_temperature_celsius > 74) {
+                                causes.push(`Surchauffe thermique détectée sur les composants physiques (${trame.cpu_temperature_celsius}°C)`);
+                                declencherTemp = true;
                             }
 
-                            alertText.innerHTML = `L'analyse prédictive a détecté des anomalies majeures sur le site <b>${currentSite}</b> :<br>• ${causes.join('<br>• ')}.<br><span class="text-red-400 font-bold">Intervention recommandée sous un délai estimé de 3 heures.</span>`;
+                            // Message purement opérationnel et humain
+                            alertText.innerHTML = `<b>Diagnostic de sécurité - Centre de Supervision :</b><br>Des anomalies physiques majeures compromettent la stabilité du site <b>${currentSite}</b> :<br>• ${causes.join('<br>• ')}.<br><span class="text-red-400 font-bold">Action requise : Déploiement d'une équipe technique sous un délai de 3 heures pour éviter l'arrêt des serveurs.</span>`;
+                            
+                            // Déclenchement simultané de l'alerte et des clignotements ciblés
                             alertBox.classList.remove('hidden');
+                            if (declencherCPU) appliquerStyleClignotement('cpu-value', true);
+                            if (declencherTemp) appliquerStyleClignotement('temp-value', true);
 
-                            if (!clignotementVerrouille) {
-                                clignotementVerrouille = true;
-                                configurationsClignotementActuelles.cpu = declencherClignotementCPU;
-                                configurationsClignotementActuelles.temp = declencherClignotementTemp;
-
-                                if (configurationsClignotementActuelles.cpu) appliquerStyleClignotement('cpu-value', true);
-                                if (configurationsClignotementActuelles.temp) appliquerStyleClignotement('temp-value', true);
-
-                                setTimeout(() => { clignotementVerrouille = false; }, 10000);
-                            }
+                            // ACTIVATION DU FREEZE OPÉRATEUR : On fige l'écran pendant 20 secondes pour permettre la lecture stable
+                            modeCriseActif = true;
+                            setTimeout(() => {
+                                modeCriseActif = false; 
+                            }, 20000);
                         }
 
-                        if (clignotementVerrouille) {
-                            if (configurationsClignotementActuelles.cpu) appliquerStyleClignotement('cpu-value', true);
-                            if (configurationsClignotementActuelles.temp) appliquerStyleClignotement('temp-value', true);
-                        }
-
-                        // Mettre à jour le planning et l'indice d'usure de la page 2
-                        actualiserPlanningMaintenance(applicationCritiqueActive, trame.cpu_temperature_celsius);
+                        actualiserPlanningMaintenance(estCritique, trame.cpu_temperature_celsius);
 
                         radarChartInstance.data.datasets[0].data = [
                             predResult.probabilities.optimal,
@@ -209,54 +203,50 @@ function rafraichirDashboard() {
         .catch(err => console.error('Erreur:', err));
 }
 
-// Génération intelligente du planning de la page 2
-function actualiserPlanningMaintenance(isDakarCritique, currentTemp) {
+function actualiserPlanningMaintenance(siteEnAvarie, currentTemp) {
     const planningBody = document.getElementById('planningTableBody');
-    
-    // Calcul factice mais cohérent de l'indice visuel d'usure basé sur la température
     const usureCalculee = (currentTemp > 70) ? (currentTemp * 0.4).toFixed(1) : (currentTemp * 0.2).toFixed(1);
     document.getElementById('kpi-usure').innerText = usureCalculee + ' %';
 
     let dakarRow = `
         <tr class="border-b border-gray-800 hover:bg-gray-950">
-            <td class="p-3 font-mono text-xs text-gray-500">WO-2026-003</td>
+            <td class="p-3 font-mono text-xs text-gray-500">REF-2026-003</td>
             <td class="p-3 font-bold text-xs">RNT-DKR-03 (Dakar)</td>
-            <td class="p-3 text-xs text-gray-400">Contrôle de routine des infrastructures de climatisation</td>
-            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400">BASSE</span></td>
-            <td class="p-3"><span class="text-xs text-gray-400"><i class="fa-regular fa-clock mr-1"></i>À Planifier</span></td>
+            <td class="p-3 text-xs text-gray-400">Entretien annuel des blocs de climatisation de la salle réseau</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400">PLANIFIÉ</span></td>
+            <td class="p-3"><span class="text-xs text-gray-400"><i class="fa-regular fa-clock mr-1"></i>En attente</span></td>
         </tr>`;
 
-    if (isDakarCritique && currentSite === 'RNT-DKR-03') {
+    if (siteEnAvarie && currentSite === 'RNT-DKR-03') {
         dakarRow = `
-        <tr class="border-b border-red-950 bg-red-950/20 hover:bg-red-950/30 animate-pulse">
-            <td class="p-3 font-mono text-xs text-red-400 font-bold">WO-2026-ALERT</td>
+        <tr class="border-b border-red-950 bg-red-950/20 hover:bg-red-950/30">
+            <td class="p-3 font-mono text-xs text-red-400 font-bold">URG-2026-04</td>
             <td class="p-3 font-bold text-xs text-red-200">RNT-DKR-03 (Dakar)</td>
-            <td class="p-3 text-xs text-red-300 font-semibold">URGENT : Remplacement immédiat du ventilateur & purge thermique</td>
-            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white">CRITIQUE</span></td>
-            <td class="p-3"><span class="text-xs text-red-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Équipe dépêchée</span></td>
+            <td class="p-3 text-xs text-red-300 font-semibold">ALERTE MATÉRIELLE : Remplacement du système de ventilation suite à surchauffe</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white">IMMÉDIAT</span></td>
+            <td class="p-3"><span class="text-xs text-red-400 font-bold"><i class="fa-solid fa-truck-fast mr-1"></i>Techniciens en route</span></td>
         </tr>`;
     }
 
     planningBody.innerHTML = `
         <tr class="border-b border-gray-800 hover:bg-gray-950">
-            <td class="p-3 font-mono text-xs text-gray-500">WO-2026-001</td>
+            <td class="p-3 font-mono text-xs text-gray-500">REF-2026-001</td>
             <td class="p-3 font-bold text-xs">RNT-PRD-01 (Paris)</td>
-            <td class="p-3 text-xs text-gray-400">Nettoyage de poussière sur les racks d'alimentation secteur</td>
+            <td class="p-3 text-xs text-gray-400">Dépoussiérage des baies d'alimentation électriques principales</td>
             <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-900/40 text-green-400">FAIBLE</span></td>
-            <td class="p-3"><span class="text-xs text-green-400"><i class="fa-solid fa-check mr-1"></i>Terminé</span></td>
+            <td class="p-3"><span class="text-xs text-green-400"><i class="fa-solid fa-check mr-1"></i>Clôturé</span></td>
         </tr>
         <tr class="border-b border-gray-800 hover:bg-gray-950">
-            <td class="p-3 font-mono text-xs text-gray-500">WO-2026-002</td>
+            <td class="p-3 font-mono text-xs text-gray-500">REF-2026-002</td>
             <td class="p-3 font-bold text-xs">RNT-BRX-02 (Bordeaux)</td>
-            <td class="p-3 text-xs text-gray-400">Mise à jour des firmwares des commutateurs réseaux secondaires</td>
-            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-900/40 text-yellow-500">MOYENNE</span></td>
-            <td class="p-3"><span class="text-xs text-yellow-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>En Cours</span></td>
+            <td class="p-3 text-xs text-gray-400">Mise à niveau logicielle des switchs de répartition secondaires</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-900/40 text-yellow-500">STANDBY</span></td>
+            <td class="p-3"><span class="text-xs text-yellow-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>En cours</span></td>
         </tr>
         ${dakarRow}
     `;
 }
 
-// Logique mathématique locale pour simuler les scénarios (Stress-Test)
 function simulerScenario() {
     const cpu = parseInt(document.getElementById('sim-cpu').value);
     const temp = parseInt(document.getElementById('sim-temp').value);
@@ -271,34 +261,33 @@ function simulerScenario() {
     const status = document.getElementById('sim-status');
     const text = document.getElementById('sim-text');
 
-    // Émulation des règles de décision de l'arbre de décision/Random Forest
     if (cpu >= 80 || temp >= 76) {
         card.className = "bg-red-950/40 p-6 rounded-xl border border-red-900 flex flex-col justify-center items-center text-center transition-all duration-300";
         icon.className = "p-4 bg-red-900 text-red-200 rounded-full mb-3";
-        icon.innerHTML = `<i class="fa-solid fa-skull-crossbones text-3xl"></i>`;
-        status.innerText = "État de Résilience : Critique (Panne)";
+        icon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-3xl"></i>`;
+        status.innerText = "Analyse préventive : Risque d'avarie critique";
         status.className = "text-lg font-black text-red-400 uppercase";
-        text.innerText = `L'algorithme prédit une rupture imminente matérielle. Profil thermique/charge insoutenable à long terme.`;
+        text.innerText = `Le profil thermique simulé dépasse les limites de tolérance constructeur. Risque de coupure matérielle imminent.`;
     } else if (cpu > 65 || temp > 68 || lat > 60) {
         card.className = "bg-yellow-950/40 p-6 rounded-xl border border-yellow-900 flex flex-col justify-center items-center text-center transition-all duration-300";
         icon.className = "p-4 bg-yellow-900 text-yellow-200 rounded-full mb-3";
-        icon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-3xl"></i>`;
-        status.innerText = "État de Résilience : Alerte Dégradée";
+        icon.innerHTML = `<i class="fa-solid fa-circle-exclamation text-3xl"></i>`;
+        status.innerText = "Analyse préventive : Seuil d'alerte atteint";
         status.className = "text-lg font-black text-yellow-500 uppercase";
-        text.innerText = `Le système entre en zone de sur-sollicitation. Vigilance requise, performances ralenties.`;
+        text.innerText = `L'infrastructure entre en zone de fatigue thermique. Des ralentissements de services sont à prévoir.`;
     } else {
         card.className = "bg-gray-950 p-6 rounded-xl border border-gray-800 flex flex-col justify-center items-center text-center transition-all duration-300";
         icon.className = "p-4 bg-green-950/50 text-green-400 rounded-full mb-3";
-        icon.innerHTML = `<i class="fa-solid fa-shield-halved text-3xl"></i>`;
-        status.innerText = "État de Résilience : Nominal";
+        icon.innerHTML = `<i class="fa-solid fa-square-check text-3xl"></i>`;
+        status.innerText = "Analyse préventive : Structure Résiliente";
         status.className = "text-lg font-black text-green-400 uppercase";
-        text.innerText = `Le profil de charge simulé respecte parfaitement les marges opérationnelles du système. Risque de panne nul.`;
+        text.innerText = `Les charges simulées sont parfaitement absorbées par le système. Stabilité garantie.`;
     }
 }
 
 function exportToCSV() {
     if (historiqueCompletTableau.length === 0) {
-        alert("Aucune donnée disponible pour l'export.");
+        alert("Aucune donnée collectée pour le moment.");
         return;
     }
     let csvContent = "data:text/csv;charset=utf-8,Horodatage,Site,CPU (%),RAM (%),Temperature (C),Latence (ms)\n";
@@ -308,7 +297,7 @@ function exportToCSV() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `nexus_historique_${currentSite}.csv`);
+    link.setAttribute("download", `registre_nexus_${currentSite}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -316,17 +305,17 @@ function exportToCSV() {
 
 function exportToPDF() {
     if (historiqueCompletTableau.length === 0) {
-        alert("Aucune donnée disponible pour l'export.");
+        alert("Aucune donnée disponible.");
         return;
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     
     doc.setFont("helvetica", "bold");
-    doc.text(`REGISTRE HISTORIQUE DES DONNÉES - SITE ${currentSite}`, 14, 15);
+    doc.text(`REGISTRE DE TÉLÉMÉTRIE CAPTEURS - SITE ${currentSite}`, 14, 15);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Rapport généré le : ${new Date().toLocaleString('fr-FR')}`, 14, 22);
+    doc.text(`Rapport d'extraction édité le : ${new Date().toLocaleString('fr-FR')}`, 14, 22);
 
     const tableRows = [];
     historiqueCompletTableau.forEach(row => {
@@ -334,14 +323,14 @@ function exportToPDF() {
     });
 
     doc.autoTable({
-        head: [['Horodatage', 'Code Site', 'CPU', 'RAM', 'Température', 'Latence']],
+        head: [['Horodatage', 'Code Installation', 'Charge CPU', 'Mémoire RAM', 'Température', 'Latence']],
         body: tableRows,
         startY: 28,
         theme: 'striped',
         headStyles: { fillColor: [30, 41, 59] }
     });
 
-    doc.save(`rapport_telemetrie_${currentSite}.pdf`);
+    doc.save(`rapport_site_${currentSite}.pdf`);
 }
 
 function switchTab(tabId) {
