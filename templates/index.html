@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Core - Maintenance Prédictive</title>
+    <title>Nexus Core - Supervision & Maintenance</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -59,12 +59,13 @@
         <main class="p-8 space-y-8 flex-1">
 
             <section id="page-dashboard" class="space-y-8">
+                
                 <div id="predictive-alert-box" class="hidden bg-red-950/60 border border-red-900 rounded-xl p-5 flex items-center space-x-4">
                     <div class="p-3 bg-red-900 rounded-lg text-red-200">
                         <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                     </div>
                     <div>
-                        <h4 class="text-red-200 font-bold text-sm">ALERTE MAINTENANCE PRÉDICTIVE</h4>
+                        <h4 class="text-red-200 font-bold text-sm">ALERTE SÉCURITÉ INFRASTRUCTURE</h4>
                         <p class="text-red-300 text-xs mt-0.5" id="predictive-alert-text"></p>
                     </div>
                 </div>
@@ -72,8 +73,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between">
                         <div>
-                            <h3 class="text-gray-400 text-xs font-bold uppercase tracking-wider">Diagnostic Système</h3>
-                            <p id="status-value" class="text-2xl font-black text-gray-400 mt-1">Analyse...</p>
+                            <h3 class="text-gray-400 text-xs font-bold uppercase tracking-wider">État Général</h3>
+                            <p id="status-value" class="text-xl font-black text-gray-400 mt-1">Analyse en cours...</p>
                         </div>
                         <div class="p-4 bg-gray-800 rounded-xl"><i class="fa-solid fa-heart-pulse text-2xl text-blue-400"></i></div>
                     </div>
@@ -108,7 +109,7 @@
                         </div>
                     </div>
                     <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                        <h3 class="text-base font-bold text-white mb-6">Probabilités de Panne</h3>
+                        <h3 class="text-base font-bold text-white mb-6">Niveau de Risque Global</h3>
                         <div class="h-64 flex items-center justify-center">
                             <canvas id="radarChart"></canvas>
                         </div>
@@ -119,39 +120,39 @@
             <section id="page-analytics" class="space-y-8 hidden">
                 
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                    <h3 class="text-base font-bold text-white mb-4"><i class="fa-solid fa-chart-pie text-blue-500 mr-2"></i>Bilan de Santé Globale & Éco-Efficience</h3>
+                    <h3 class="text-base font-bold text-white mb-4"><i class="fa-solid fa-chart-pie text-blue-500 mr-2"></i>Indicateurs opérationnels de performance</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 text-center">
-                            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Taux de Disponibilité (Uptime)</span>
+                            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Taux de Disponibilité des Infrastructures</span>
                             <p class="text-3xl font-black text-green-400 mt-2">99.84 %</p>
-                            <span class="text-xs text-gray-500 block mt-1">Fonctionnement nominal ce mois</span>
+                            <span class="text-xs text-gray-500 block mt-1">Salles serveurs actives en ligne sans coupure</span>
                         </div>
                         <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 text-center">
-                            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Indice d'Usure Thermique</span>
+                            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">Indice de Fatigue Thermique</span>
                             <p id="kpi-usure" class="text-3xl font-black text-yellow-500 mt-2">12.4 %</p>
-                            <span class="text-xs text-gray-500 block mt-1">Stress cumulé des processeurs</span>
+                            <span class="text-xs text-gray-500 block mt-1">Niveau d'échauffement des composants électroniques</span>
                         </div>
                         <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 text-center">
-                            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider font-mono">Éco-Efficience (PUE)</span>
+                            <span class="text-xs text-gray-400 uppercase font-bold tracking-wider font-mono">Efficacité Énergétique (PUE)</span>
                             <p class="text-3xl font-black text-blue-400 mt-2">1.21</p>
-                            <span class="text-xs text-gray-500 block mt-1">Excellent rendement énergétique</span>
+                            <span class="text-xs text-gray-500 block mt-1">Ratio d'absorption d'électricité de la climatisation</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-base font-bold text-white"><i class="fa-solid fa-calendar-check text-purple-500 mr-2"></i>Ordres de Travail Automatisés</h3>
-                        <span class="text-xs bg-gray-800 px-3 py-1 rounded-full text-gray-400 font-semibold font-mono">Généré par Analyse Prédictive</span>
+                        <h3 class="text-base font-bold text-white"><i class="fa-solid fa-calendar-check text-purple-500 mr-2"></i>Plan d'Intervention Recommandé</h3>
+                        <span class="text-xs bg-gray-800 px-3 py-1 rounded-full text-gray-400 font-semibold font-mono">Actualisation en temps réel</span>
                     </div>
                     <div class="overflow-x-auto rounded-lg border border-gray-800">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-950 text-gray-400 text-xs uppercase font-bold border-b border-gray-800">
-                                    <th class="p-3">ID Tâche</th>
-                                    <th class="p-3">Site Ciblé</th>
+                                    <th class="p-3">ID Dossier</th>
+                                    <th class="p-3">Site Concerné</th>
                                     <th class="p-3">Intervention Préconisée</th>
-                                    <th class="p-3">Priorité</th>
+                                    <th class="p-3">Urgence</th>
                                     <th class="p-3">Statut Équipe</th>
                                 </tr>
                             </thead>
@@ -163,7 +164,7 @@
 
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
                     <h3 class="text-base font-bold text-white mb-2"><i class="fa-solid fa-flask-vial text-yellow-500 mr-2"></i>Simulateur de Charge & Stress-Test Numérique</h3>
-                    <p class="text-xs text-gray-400 mb-6">Ajustez les curseurs pour éprouver la robustesse de l'infrastructure et observer la réponse instantanée de l'algorithme de diagnostic.</p>
+                    <p class="text-xs text-gray-400 mb-6">Modifiez manuellement les paramètres physiques ci-dessous pour éprouver la solidité de l'infrastructure et observer les seuils de tolérance du système.</p>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div class="space-y-4 bg-gray-950 p-5 rounded-xl border border-gray-800">
@@ -192,10 +193,10 @@
                         
                         <div id="sim-response-card" class="bg-gray-950 p-6 rounded-xl border border-gray-800 flex flex-col justify-center items-center text-center transition-all duration-300">
                             <div id="sim-icon" class="p-4 bg-green-950/50 text-green-400 rounded-full mb-3">
-                                <i class="fa-solid fa-shield-halved text-3xl"></i>
+                                <i class="fa-solid fa-square-check text-3xl"></i>
                             </div>
-                            <h4 id="sim-status" class="text-lg font-black text-green-400 uppercase">État de Résilience : Nominal</h4>
-                            <p id="sim-text" class="text-xs text-gray-400 mt-2 max-w-sm">Le profil de charge simulé respecte parfaitement les marges opérationnelles du système. Risque de panne nul.</p>
+                            <h4 id="sim-status" class="text-lg font-black text-green-400 uppercase">Analyse préventive : Structure Résiliente</h4>
+                            <p id="sim-text" class="text-xs text-gray-400 mt-2 max-w-sm">Les charges simulées sont parfaitement absorbées par le système. Stabilité garantie.</p>
                         </div>
                     </div>
                 </div>
@@ -206,7 +207,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                         <div>
                             <h3 class="text-base font-bold text-white">Registre des Données Capteurs</h3>
-                            <p class="text-xs text-gray-400 mt-0.5">Données lues en base de données PostgreSQL</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Données de télémétrie lues en base de données PostgreSQL</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-3">
                             <button onclick="exportToCSV()" class="bg-gray-800 hover:bg-gray-700 text-xs font-semibold px-4 py-2 rounded-lg border border-gray-700 text-gray-200 transition-all">
