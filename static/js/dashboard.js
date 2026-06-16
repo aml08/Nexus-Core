@@ -6,15 +6,14 @@ let radarChartInstance = null;
 let currentSite = 'RNT-PRD-01';
 let historiqueCompletTableau = [];
 
-// Variables pour le verrouillage du clignotement (minimum 10 secondes)
 let clignotementVerrouille = false;
 let configurationsClignotementActuelles = { cpu: false, temp: false };
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     rafraichirDashboard();
-    loadModelComparison();
     setInterval(rafraichirDashboard, 5000);
+    simulerScenario(); // Initie le simulateur au chargement
 });
 
 function initCharts() {
@@ -48,22 +47,17 @@ function changeActiveSite(siteKey) {
     donneesCPU = [];
     donneesTemp = [];
     document.getElementById('logsTableBody').innerHTML = '';
-    
-    // Réinitialisation des alertes et clignotements au changement de site
     document.getElementById('predictive-alert-box').classList.add('hidden');
     clignotementVerrouille = false;
     stopperTousLesClignotements();
-    
     rafraichirDashboard();
 }
 
 function stopperTousLesClignotements() {
     const cpuCard = document.getElementById('cpu-value').closest('.bg-gray-900');
     const tempCard = document.getElementById('temp-value').closest('.bg-gray-900');
-    
     cpuCard.className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between transition-all duration-500";
     tempCard.className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between transition-all duration-500";
-    
     configurationsClignotementActuelles = { cpu: false, temp: false };
 }
 
@@ -105,6 +99,8 @@ function rafraichirDashboard() {
                     const alertBox = document.getElementById('predictive-alert-box');
                     const alertText = document.getElementById('predictive-alert-text');
                     
+                    let applicationCritiqueActive = false;
+
                     if (predResult.status === 'success') {
                         const pred = predResult.prediction;
                         
@@ -119,6 +115,7 @@ function rafraichirDashboard() {
                             alertBox.classList.add('hidden');
                             if (!clignotementVerrouille) stopperTousLesClignotements();
                         } else {
+                            applicationCritiqueActive = true;
                             statutElement.innerText = '🚨 Critique';
                             statutElement.className = "text-xl font-black text-red-500 mt-1";
                             
@@ -144,7 +141,6 @@ function rafraichirDashboard() {
                             alertText.innerHTML = `L'analyse prédictive a détecté des anomalies majeures sur le site <b>${currentSite}</b> :<br>• ${causes.join('<br>• ')}.<br><span class="text-red-400 font-bold">Intervention recommandée sous un délai estimé de 3 heures.</span>`;
                             alertBox.classList.remove('hidden');
 
-                            // Logique de verrouillage temporel des clignotements (Minimum 10 secondes)
                             if (!clignotementVerrouille) {
                                 clignotementVerrouille = true;
                                 configurationsClignotementActuelles.cpu = declencherClignotementCPU;
@@ -153,18 +149,17 @@ function rafraichirDashboard() {
                                 if (configurationsClignotementActuelles.cpu) appliquerStyleClignotement('cpu-value', true);
                                 if (configurationsClignotementActuelles.temp) appliquerStyleClignotement('temp-value', true);
 
-                                // Déclenchement du compte à rebours de 10 secondes avant libération du verrou
-                                setTimeout(() => {
-                                    clignotementVerrouille = false;
-                                }, 10000);
+                                setTimeout(() => { clignotementVerrouille = false; }, 10000);
                             }
                         }
 
-                        // Si le verrou est actif, on maintient de force les clignotements enregistrés au début du cycle
                         if (clignotementVerrouille) {
                             if (configurationsClignotementActuelles.cpu) appliquerStyleClignotement('cpu-value', true);
                             if (configurationsClignotementActuelles.temp) appliquerStyleClignotement('temp-value', true);
                         }
+
+                        // Mettre à jour le planning et l'indice d'usure de la page 2
+                        actualiserPlanningMaintenance(applicationCritiqueActive, trame.cpu_temperature_celsius);
 
                         radarChartInstance.data.datasets[0].data = [
                             predResult.probabilities.optimal,
@@ -214,44 +209,91 @@ function rafraichirDashboard() {
         .catch(err => console.error('Erreur:', err));
 }
 
-function loadModelComparison() {
-    fetch('/api/model-comparison')
-        .then(response => response.json())
-        .then(data => {
-            const cardsContainer = document.getElementById('comparison-cards');
-            const detailsContainer = document.getElementById('detailed-metrics');
-            cardsContainer.innerHTML = '';
-            detailsContainer.innerHTML = '';
+// Génération intelligente du planning de la page 2
+function actualiserPlanningMaintenance(isDakarCritique, currentTemp) {
+    const planningBody = document.getElementById('planningTableBody');
+    
+    // Calcul factice mais cohérent de l'indice visuel d'usure basé sur la température
+    const usureCalculee = (currentTemp > 70) ? (currentTemp * 0.4).toFixed(1) : (currentTemp * 0.2).toFixed(1);
+    document.getElementById('kpi-usure').innerText = usureCalculee + ' %';
 
-            for (const [modelName, metrics] of Object.entries(data)) {
-                const cleanName = modelName.replace('_', ' ');
-                
-                const card = document.createElement('div');
-                card.className = "bg-gray-950 border border-gray-800 rounded-xl p-6 text-center shadow-inner";
-                card.innerHTML = `
-                    <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">${cleanName}</span>
-                    <p class="text-3xl font-black text-blue-500 mt-2">${metrics.accuracy} %</p>
-                    <span class="text-xs text-gray-500 block mt-1">Taux de précision global</span>
-                `;
-                cardsContainer.appendChild(card);
+    let dakarRow = `
+        <tr class="border-b border-gray-800 hover:bg-gray-950">
+            <td class="p-3 font-mono text-xs text-gray-500">WO-2026-003</td>
+            <td class="p-3 font-bold text-xs">RNT-DKR-03 (Dakar)</td>
+            <td class="p-3 text-xs text-gray-400">Contrôle de routine des infrastructures de climatisation</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400">BASSE</span></td>
+            <td class="p-3"><span class="text-xs text-gray-400"><i class="fa-regular fa-clock mr-1"></i>À Planifier</span></td>
+        </tr>`;
 
-                const detailSection = document.createElement('div');
-                detailSection.className = "bg-gray-950 p-4 rounded-lg border border-gray-800 font-mono text-xs text-gray-400 space-y-1";
-                
-                const prec0 = (metrics.report['0'].precision * 100).toFixed(1) + '%';
-                const rec0 = (metrics.report['0'].recall * 100).toFixed(1) + '%';
-                const prec2 = (metrics.report['2'] ? (metrics.report['2'].precision * 100).toFixed(1) + '%' : 'N/A');
-                const rec2 = (metrics.report['2'] ? (metrics.report['2'].recall * 100).toFixed(1) + '%' : 'N/A');
+    if (isDakarCritique && currentSite === 'RNT-DKR-03') {
+        dakarRow = `
+        <tr class="border-b border-red-950 bg-red-950/20 hover:bg-red-950/30 animate-pulse">
+            <td class="p-3 font-mono text-xs text-red-400 font-bold">WO-2026-ALERT</td>
+            <td class="p-3 font-bold text-xs text-red-200">RNT-DKR-03 (Dakar)</td>
+            <td class="p-3 text-xs text-red-300 font-semibold">URGENT : Remplacement immédiat du ventilateur & purge thermique</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white">CRITIQUE</span></td>
+            <td class="p-3"><span class="text-xs text-red-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Équipe dépêchée</span></td>
+        </tr>`;
+    }
 
-                detailSection.innerHTML = `
-                    <h4 class="text-white font-bold mb-2 uppercase text-sm">${cleanName}</h4>
-                    <p class="text-gray-300">-> Statut Nominal  | Précision: ${prec0} | Rappel: ${rec0}</p>
-                    <p class="text-red-400">-> Statut Critique | Précision: ${prec2} | Rappel: ${rec2}</p>
-                `;
-                detailsContainer.appendChild(detailSection);
-            }
-        })
-        .catch(err => console.log('Flux en cours de synchronisation...'));
+    planningBody.innerHTML = `
+        <tr class="border-b border-gray-800 hover:bg-gray-950">
+            <td class="p-3 font-mono text-xs text-gray-500">WO-2026-001</td>
+            <td class="p-3 font-bold text-xs">RNT-PRD-01 (Paris)</td>
+            <td class="p-3 text-xs text-gray-400">Nettoyage de poussière sur les racks d'alimentation secteur</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-900/40 text-green-400">FAIBLE</span></td>
+            <td class="p-3"><span class="text-xs text-green-400"><i class="fa-solid fa-check mr-1"></i>Terminé</span></td>
+        </tr>
+        <tr class="border-b border-gray-800 hover:bg-gray-950">
+            <td class="p-3 font-mono text-xs text-gray-500">WO-2026-002</td>
+            <td class="p-3 font-bold text-xs">RNT-BRX-02 (Bordeaux)</td>
+            <td class="p-3 text-xs text-gray-400">Mise à jour des firmwares des commutateurs réseaux secondaires</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-900/40 text-yellow-500">MOYENNE</span></td>
+            <td class="p-3"><span class="text-xs text-yellow-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>En Cours</span></td>
+        </tr>
+        ${dakarRow}
+    `;
+}
+
+// Logique mathématique locale pour simuler les scénarios (Stress-Test)
+function simulerScenario() {
+    const cpu = parseInt(document.getElementById('sim-cpu').value);
+    const temp = parseInt(document.getElementById('sim-temp').value);
+    const lat = parseInt(document.getElementById('sim-lat').value);
+
+    document.getElementById('val-sim-cpu').innerText = cpu + ' %';
+    document.getElementById('val-sim-temp').innerText = temp + ' °C';
+    document.getElementById('val-sim-lat').innerText = lat + ' ms';
+
+    const card = document.getElementById('sim-response-card');
+    const icon = document.getElementById('sim-icon');
+    const status = document.getElementById('sim-status');
+    const text = document.getElementById('sim-text');
+
+    // Émulation des règles de décision de l'arbre de décision/Random Forest
+    if (cpu >= 80 || temp >= 76) {
+        card.className = "bg-red-950/40 p-6 rounded-xl border border-red-900 flex flex-col justify-center items-center text-center transition-all duration-300";
+        icon.className = "p-4 bg-red-900 text-red-200 rounded-full mb-3";
+        icon.innerHTML = `<i class="fa-solid fa-skull-crossbones text-3xl"></i>`;
+        status.innerText = "État de Résilience : Critique (Panne)";
+        status.className = "text-lg font-black text-red-400 uppercase";
+        text.innerText = `L'algorithme prédit une rupture imminente matérielle. Profil thermique/charge insoutenable à long terme.`;
+    } else if (cpu > 65 || temp > 68 || lat > 60) {
+        card.className = "bg-yellow-950/40 p-6 rounded-xl border border-yellow-900 flex flex-col justify-center items-center text-center transition-all duration-300";
+        icon.className = "p-4 bg-yellow-900 text-yellow-200 rounded-full mb-3";
+        icon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-3xl"></i>`;
+        status.innerText = "État de Résilience : Alerte Dégradée";
+        status.className = "text-lg font-black text-yellow-500 uppercase";
+        text.innerText = `Le système entre en zone de sur-sollicitation. Vigilance requise, performances ralenties.`;
+    } else {
+        card.className = "bg-gray-950 p-6 rounded-xl border border-gray-800 flex flex-col justify-center items-center text-center transition-all duration-300";
+        icon.className = "p-4 bg-green-950/50 text-green-400 rounded-full mb-3";
+        icon.innerHTML = `<i class="fa-solid fa-shield-halved text-3xl"></i>`;
+        status.innerText = "État de Résilience : Nominal";
+        status.className = "text-lg font-black text-green-400 uppercase";
+        text.innerText = `Le profil de charge simulé respecte parfaitement les marges opérationnelles du système. Risque de panne nul.`;
+    }
 }
 
 function exportToCSV() {
@@ -318,7 +360,7 @@ function switchTab(tabId) {
     } else if (tabId === 'analytics') {
         document.getElementById('page-analytics').classList.remove('hidden');
         document.getElementById('btn-analytics').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        document.getElementById('page-title').innerText = "Rapport d'Audit Technique";
+        document.getElementById('page-title').innerText = "Gestion & Planification Prédictive";
     } else if (tabId === 'logs') {
         document.getElementById('page-logs').classList.remove('hidden');
         document.getElementById('btn-logs').className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
