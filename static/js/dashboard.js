@@ -4,13 +4,17 @@ let donneesTemp = [];
 let lineChartInstance = null;
 let radarChartInstance = null;
 let currentSite = 'RNT-PRD-01';
-let historiqueCompletTableau = []; // Stockage permanent pour l'exportation
+let historiqueCompletTableau = [];
+
+// Variables pour le verrouillage du clignotement (minimum 10 secondes)
+let clignotementVerrouille = false;
+let configurationsClignotementActuelles = { cpu: false, temp: false };
 
 document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     rafraichirDashboard();
     loadModelComparison();
-    setInterval(rafraichirDashboard, 5000); // Frequence de rafraichissement baissee a 5 secondes
+    setInterval(rafraichirDashboard, 5000);
 });
 
 function initCharts() {
@@ -44,7 +48,32 @@ function changeActiveSite(siteKey) {
     donneesCPU = [];
     donneesTemp = [];
     document.getElementById('logsTableBody').innerHTML = '';
+    
+    // Réinitialisation des alertes et clignotements au changement de site
+    document.getElementById('predictive-alert-box').classList.add('hidden');
+    clignotementVerrouille = false;
+    stopperTousLesClignotements();
+    
     rafraichirDashboard();
+}
+
+function stopperTousLesClignotements() {
+    const cpuCard = document.getElementById('cpu-value').closest('.bg-gray-900');
+    const tempCard = document.getElementById('temp-value').closest('.bg-gray-900');
+    
+    cpuCard.className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between transition-all duration-500";
+    tempCard.className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between transition-all duration-500";
+    
+    configurationsClignotementActuelles = { cpu: false, temp: false };
+}
+
+function appliquerStyleClignotement(elementId, activer) {
+    const card = document.getElementById(elementId).closest('.bg-gray-900');
+    if (activer) {
+        card.className = "bg-red-950/80 border border-red-700 rounded-xl p-6 shadow-xl flex items-center justify-between animate-pulse transition-all duration-500";
+    } else {
+        card.className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between transition-all duration-500";
+    }
 }
 
 function rafraichirDashboard() {
@@ -83,15 +112,58 @@ function rafraichirDashboard() {
                             statutElement.innerText = '🛡️ Nominal';
                             statutElement.className = "text-xl font-black text-green-400 mt-1";
                             alertBox.classList.add('hidden');
+                            if (!clignotementVerrouille) stopperTousLesClignotements();
                         } else if (pred === 1) {
                             statutElement.innerText = '⚠️ Alerte';
                             statutElement.className = "text-xl font-black text-yellow-500 mt-1";
                             alertBox.classList.add('hidden');
+                            if (!clignotementVerrouille) stopperTousLesClignotements();
                         } else {
                             statutElement.innerText = '🚨 Critique';
                             statutElement.className = "text-xl font-black text-red-500 mt-1";
-                            alertText.innerText = `Anomalie lourde detectee sur le site ${currentSite}. Risque d'interruption materielle estime sous un delai de 3 heures.`;
+                            
+                            let causes = [];
+                            let declencherClignotementCPU = false;
+                            let declencherClignotementTemp = false;
+
+                            if (trame.cpu_usage_pct > 70) {
+                                causes.push(`Surcharge CPU de ${trame.cpu_usage_pct}% (Seuil max conseillé: 70%)`);
+                                declencherClignotementCPU = true;
+                            }
+                            if (trame.ram_usage_pct > 70) {
+                                causes.push(`Saturation de la mémoire RAM à ${trame.ram_usage_pct}%`);
+                            }
+                            if (trame.cpu_temperature_celsius > 75) {
+                                causes.push(`Surchauffe thermique détectée au cœur des processeurs (${trame.cpu_temperature_celsius}°C)`);
+                                declencherClignotementTemp = true;
+                            }
+                            if (causes.length === 0) {
+                                causes.push("Anomalie système globale non linéaire identifiée");
+                            }
+
+                            alertText.innerHTML = `L'analyse prédictive a détecté des anomalies majeures sur le site <b>${currentSite}</b> :<br>• ${causes.join('<br>• ')}.<br><span class="text-red-400 font-bold">Intervention recommandée sous un délai estimé de 3 heures.</span>`;
                             alertBox.classList.remove('hidden');
+
+                            // Logique de verrouillage temporel des clignotements (Minimum 10 secondes)
+                            if (!clignotementVerrouille) {
+                                clignotementVerrouille = true;
+                                configurationsClignotementActuelles.cpu = declencherClignotementCPU;
+                                configurationsClignotementActuelles.temp = declencherClignotementTemp;
+
+                                if (configurationsClignotementActuelles.cpu) appliquerStyleClignotement('cpu-value', true);
+                                if (configurationsClignotementActuelles.temp) appliquerStyleClignotement('temp-value', true);
+
+                                // Déclenchement du compte à rebours de 10 secondes avant libération du verrou
+                                setTimeout(() => {
+                                    clignotementVerrouille = false;
+                                }, 10000);
+                            }
+                        }
+
+                        // Si le verrou est actif, on maintient de force les clignotements enregistrés au début du cycle
+                        if (clignotementVerrouille) {
+                            if (configurationsClignotementActuelles.cpu) appliquerStyleClignotement('cpu-value', true);
+                            if (configurationsClignotementActuelles.temp) appliquerStyleClignotement('temp-value', true);
                         }
 
                         radarChartInstance.data.datasets[0].data = [
@@ -115,7 +187,6 @@ function rafraichirDashboard() {
                 }
                 lineChartInstance.update();
 
-                // Ajout de la trame dans notre registre de sauvegarde permanent pour export
                 historiqueCompletTableau.unshift({
                     horodatage: heureFormat,
                     site: trame.server_id,
@@ -152,7 +223,6 @@ function loadModelComparison() {
             cardsContainer.innerHTML = '';
             detailsContainer.innerHTML = '';
 
-            // Lecture correcte des cles du dictionnaire JSON
             for (const [modelName, metrics] of Object.entries(data)) {
                 const cleanName = modelName.replace('_', ' ');
                 
@@ -161,14 +231,13 @@ function loadModelComparison() {
                 card.innerHTML = `
                     <span class="text-xs text-gray-400 uppercase font-bold tracking-wider">${cleanName}</span>
                     <p class="text-3xl font-black text-blue-500 mt-2">${metrics.accuracy} %</p>
-                    <span class="text-xs text-gray-500 block mt-1">Taux de precision global</span>
+                    <span class="text-xs text-gray-500 block mt-1">Taux de précision global</span>
                 `;
                 cardsContainer.appendChild(card);
 
                 const detailSection = document.createElement('div');
                 detailSection.className = "bg-gray-950 p-4 rounded-lg border border-gray-800 font-mono text-xs text-gray-400 space-y-1";
                 
-                // Extraction securisee des sous-metriques du rapport de classification
                 const prec0 = (metrics.report['0'].precision * 100).toFixed(1) + '%';
                 const rec0 = (metrics.report['0'].recall * 100).toFixed(1) + '%';
                 const prec2 = (metrics.report['2'] ? (metrics.report['2'].precision * 100).toFixed(1) + '%' : 'N/A');
@@ -176,8 +245,8 @@ function loadModelComparison() {
 
                 detailSection.innerHTML = `
                     <h4 class="text-white font-bold mb-2 uppercase text-sm">${cleanName}</h4>
-                    <p class="text-gray-300">-> Classe Statut Optimal  | Precision: ${prec0} | Rappel (Recall): ${rec0}</p>
-                    <p class="text-red-400">-> Classe Statut Critique | Precision: ${prec2} | Rappel (Recall): ${rec2}</p>
+                    <p class="text-gray-300">-> Statut Nominal  | Précision: ${prec0} | Rappel: ${rec0}</p>
+                    <p class="text-red-400">-> Statut Critique | Précision: ${prec2} | Rappel: ${rec2}</p>
                 `;
                 detailsContainer.appendChild(detailSection);
             }
@@ -185,10 +254,9 @@ function loadModelComparison() {
         .catch(err => console.log('Flux en cours de synchronisation...'));
 }
 
-// Fonction d'exportation au format CSV
 function exportToCSV() {
     if (historiqueCompletTableau.length === 0) {
-        alert("Aucune donnee disponible pour le moment.");
+        alert("Aucune donnée disponible pour l'export.");
         return;
     }
     let csvContent = "data:text/csv;charset=utf-8,Horodatage,Site,CPU (%),RAM (%),Temperature (C),Latence (ms)\n";
@@ -198,26 +266,25 @@ function exportToCSV() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `nexus_registre_${currentSite}.csv`);
+    link.setAttribute("download", `nexus_historique_${currentSite}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
-// Fonction d'exportation au format PDF
 function exportToPDF() {
     if (historiqueCompletTableau.length === 0) {
-        alert("Aucune donnee disponible pour le moment.");
+        alert("Aucune donnée disponible pour l'export.");
         return;
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     
     doc.setFont("helvetica", "bold");
-    doc.text(`RAPPORT DE REGISTRE DES DONNEES - SITE ${currentSite}`, 14, 15);
+    doc.text(`REGISTRE HISTORIQUE DES DONNÉES - SITE ${currentSite}`, 14, 15);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Genere le : ${new Date().toLocaleString('fr-FR')}`, 14, 22);
+    doc.text(`Rapport généré le : ${new Date().toLocaleString('fr-FR')}`, 14, 22);
 
     const tableRows = [];
     historiqueCompletTableau.forEach(row => {
@@ -225,14 +292,14 @@ function exportToPDF() {
     });
 
     doc.autoTable({
-        head: [['Horodatage', 'Site', 'CPU', 'RAM', 'Temperature', 'Latence']],
+        head: [['Horodatage', 'Code Site', 'CPU', 'RAM', 'Température', 'Latence']],
         body: tableRows,
         startY: 28,
         theme: 'striped',
         headStyles: { fillColor: [30, 41, 59] }
     });
 
-    doc.save(`rapport_nexus_${currentSite}.pdf`);
+    doc.save(`rapport_telemetrie_${currentSite}.pdf`);
 }
 
 function switchTab(tabId) {
