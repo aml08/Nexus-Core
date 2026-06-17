@@ -10,10 +10,14 @@ let modeCriseActif = false;
 let configurationsClignotementActuelles = { cpu: false, temp: false };
 
 document.addEventListener('DOMContentLoaded', function() {
-    initCharts();
-    rafraichirDashboard();
-    setInterval(rafraichirDashboard, 5000); 
-    simulerScenario();
+    try {
+        initCharts();
+        rafraichirDashboard();
+        setInterval(rafraichirDashboard, 5000); 
+        simulerScenario();
+    } catch (e) {
+        console.error("Erreur à l'initialisation du Dashboard: ", e);
+    }
 });
 
 function initCharts() {
@@ -184,18 +188,20 @@ function rafraichirDashboard() {
                             }, 20000);
                         }
 
-                        actualiserPlanningMaintenance(estCritique, trame.cpu_temperature_celsius);
+                        try {
+                            actualiserPlanningMaintenance(estCritique, trame.cpu_temperature_celsius);
+                        } catch (errTable) { console.error("Erreur planning:", errTable); }
 
-                        if (radarChartInstance) {
+                        if (radarChartInstance && predResult.probabilities) {
                             radarChartInstance.data.datasets[0].data = [
-                                predResult.probabilities.optimal,
-                                predResult.probabilities.warning,
-                                predResult.probabilities.critical
+                                predResult.probabilities.optimal || 0,
+                                predResult.probabilities.warning || 0,
+                                predResult.probabilities.critical || 0
                             ];
                             radarChartInstance.update();
                         }
                     }
-                });
+                }).catch(err => console.error('Erreur Fetch Predict:', err));
 
                 const heureFormat = new Date(trame.timestamp).toLocaleTimeString('fr-FR');
                 labelsChronologiques.push(heureFormat);
@@ -235,7 +241,7 @@ function rafraichirDashboard() {
                 }
             }
         })
-        .catch(err => console.error('Erreur:', err));
+        .catch(err => console.error('Erreur Fetch Live Data:', err));
 }
 
 function actualiserPlanningMaintenance(siteEnAvarie, currentTemp) {
@@ -410,4 +416,23 @@ function switchTab(tabId) {
     const btnAnal = document.getElementById('btn-analytics');
     const btnLogs = document.getElementById('btn-logs');
 
-    if (btnDash) btnDash.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray
+    if (btnDash) btnDash.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
+    if (btnAnal) btnAnal.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
+    if (btnLogs) btnLogs.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
+
+    const pTitle = document.getElementById('page-title');
+
+    if (tabId === 'dashboard') {
+        if (pDash) pDash.classList.remove('hidden');
+        if (btnDash) btnDash.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
+        if (pTitle) pTitle.innerText = "Supervision Multi-Sites";
+    } else if (tabId === 'analytics') {
+        if (pAnal) pAnal.classList.remove('hidden');
+        if (btnAnal) btnAnal.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
+        if (pTitle) pTitle.innerText = "Gestion & Planification";
+    } else if (tabId === 'logs') {
+        if (pLogs) pLogs.classList.remove('hidden');
+        if (btnLogs) btnLogs.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
+        if (pTitle) pTitle.innerText = "Historique des Données";
+    }
+}
