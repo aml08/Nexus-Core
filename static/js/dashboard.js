@@ -109,6 +109,9 @@ function rafraichirDashboard() {
                 if (tempVal) tempVal.innerText = trame.cpu_temperature_celsius + ' °C';
                 if (latVal) latVal.innerText = trame.network_latency_ms + ' ms';
 
+                const diskIO = trame.disk_io_rate || trame['disk_io_rate:'] || 120.0;
+                const ramUsage = trame.ram_usage_pct || 70.0;
+
                 fetch('/predict', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -116,9 +119,9 @@ function rafraichirDashboard() {
                         model_key: 'random_forest',
                         site_id: currentSite,
                         cpu_usage_pct: trame.cpu_usage_pct,
-                        ram_usage_pct: trame.ram_usage_pct,
+                        ram_usage_pct: ramUsage,
                         cpu_temperature_celsius: trame.cpu_temperature_celsius,
-                        disk_io_rate: trame.disk_io_rate,
+                        disk_io_rate: diskIO,
                         network_latency_ms: trame.network_latency_ms
                     })
                 })
@@ -210,7 +213,7 @@ function rafraichirDashboard() {
                     horodatage: heureFormat,
                     site: trame.server_id,
                     cpu: trame.cpu_usage_pct,
-                    ram: trame.ram_usage_pct,
+                    ram: ramUsage,
                     temp: trame.cpu_temperature_celsius,
                     latence: trame.network_latency_ms
                 });
@@ -223,7 +226,7 @@ function rafraichirDashboard() {
                         <td class="p-4 text-blue-400">${heureFormat}</td>
                         <td class="p-4 text-xs font-bold text-gray-400">${trame.server_id}</td>
                         <td class="p-4">${trame.cpu_usage_pct} %</td>
-                        <td class="p-4">${trame.ram_usage_pct} %</td>
+                        <td class="p-4">${ramUsage} %</td>
                         <td class="p-4 text-yellow-500">${trame.cpu_temperature_celsius} °C</td>
                         <td class="p-4 text-green-400">${trame.network_latency_ms} ms</td>
                     `;
@@ -287,7 +290,7 @@ function simulerScenario() {
     const simTemp = document.getElementById('sim-temp');
     const simLat = document.getElementById('sim-lat');
     
-    if (!simCpu || !simTemp || !simLat) return; // Sécurité anti-crash si la page n'est pas instanciée
+    if (!simCpu || !simTemp || !simLat) return; 
 
     const cpu = parseInt(simCpu.value);
     const temp = parseInt(simTemp.value);
