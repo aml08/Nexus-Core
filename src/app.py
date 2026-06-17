@@ -115,7 +115,6 @@ def predict():
         disk = float(data.get('disk_io_rate', 120.0))
         lat = float(data.get('network_latency_ms', 15.0))
         
-        # Reconstruction sous forme de DataFrame nommé pour correspondre au modèle entraîné
         features = pd.DataFrame([{
             'cpu_usage_pct': cpu,
             'ram_usage_pct': ram,
@@ -123,6 +122,10 @@ def predict():
             'disk_io_rate': disk,
             'network_latency_ms': lat
         }])
+        
+        # Aligne dynamiquement l'ordre des colonnes sur celui enregistré dans le fichier pkl
+        if hasattr(current_model, 'feature_names_in_'):
+            features = features.reindex(columns=current_model.feature_names_in_)
         
         prediction = int(current_model.predict(features)[0])
         
