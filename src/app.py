@@ -37,7 +37,7 @@ for model_key, file_name in model_files.items():
 etat_serveurs = {
     'RNT-PRD-01': {'cpu': 35.0, 'temp': 52.0},
     'RNT-BRX-02': {'cpu': 22.0, 'temp': 41.0},
-    'RNT-DKR-03': {'cpu': 75.0, 'temp': 72.0}
+    'RNT-DKR-03': {'cpu': 85.0, 'temp': 78.0}
 }
 
 alerte_deja_envoyee = {
@@ -115,7 +115,14 @@ def predict():
         disk = float(data.get('disk_io_rate', 120.0))
         lat = float(data.get('network_latency_ms', 15.0))
         
-        features = [[cpu, ram, temp, disk, lat]]
+        # Reconstruction sous forme de DataFrame nommé pour correspondre au modèle entraîné
+        features = pd.DataFrame([{
+            'cpu_usage_pct': cpu,
+            'ram_usage_pct': ram,
+            'cpu_temperature_celsius': temp,
+            'disk_io_rate': disk,
+            'network_latency_ms': lat
+        }])
         
         prediction = int(current_model.predict(features)[0])
         
