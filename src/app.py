@@ -5,6 +5,7 @@ import os
 import random
 import json
 import smtplib
+import time
 from email.mime.text import MIMEText
 from sqlalchemy import create_engine
 
@@ -40,10 +41,10 @@ etat_serveurs = {
     'RNT-DKR-03': {'cpu': 85.0, 'temp': 78.0}
 }
 
-alerte_deja_envoyee = {
-    'RNT-PRD-01': False,
-    'RNT-BRX-02': False,
-    'RNT-DKR-03': False
+dernier_email_envoye_at = {
+    'RNT-PRD-01': 0,
+    'RNT-BRX-02': 0,
+    'RNT-DKR-03': 0
 }
 
 def envoyer_email_notification(site, cpu, temp):
@@ -100,7 +101,7 @@ def get_comparison():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    global alerte_deja_envoyee
+    global dernier_email_envoye_at
     data = request.get_json()
     selected_model_key = data.get('model_key', 'random_forest')
     current_model = models.get(selected_model_key)
@@ -123,19 +124,21 @@ def predict():
             'network_latency_ms': lat
         }])
         
-        # Aligne dynamiquement l'ordre des colonnes sur celui enregistré dans le fichier pkl
         if hasattr(current_model, 'feature_names_in_'):
             features = features.reindex(columns=current_model.feature_names_in_)
         
         prediction = int(current_model.predict(features)[0])
-        
         site_actuel = data.get('site_id', 'RNT-PRD-01')
-        if prediction == 2:
-            if not alerte_deja_envoyee.get(site_actuel, False):
+        
+        if prediction == 2 or temp > 75.0:
+            temps_actuel = time.time()
+            temps_ecoule = temps_actuel - dernier_email_envoye_at[site_actuel]
+            
+            if temps_ecoule > 600: 
                 envoyer_email_notification(site_actuel, cpu, temp)
-                alerte_deja_envoyee[site_actuel] = True
-        else:
-            alerte_deja_envoyee[site_actuel] = False
+                dernier_email_envoye_at[site_actuel] = temps_actuel
+            else:
+                print(f"[Anti-Spam] Alerte active sur {site_actuel} mais notification bloquée (Dernier envoi il y a {int(temps_ecoule)}s)")
         
         if hasattr(current_model, "predict_proba"):
             probabilities = current_model.predict_proba(features)[0].tolist()
