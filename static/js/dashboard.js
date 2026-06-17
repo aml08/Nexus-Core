@@ -17,28 +17,34 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initCharts() {
-    const ctxLine = document.getElementById('lineChart').getContext('2d');
-    lineChartInstance = new Chart(ctxLine, {
-        type: 'line',
-        data: {
-            labels: labelsChronologiques,
-            datasets: [
-                { label: 'Charge CPU (%)', borderColor: 'rgb(147, 51, 234)', data: donneesCPU, backgroundColor: 'rgba(147, 51, 234, 0.1)', tension: 0.3, fill: true },
-                { label: 'Température (°C)', borderColor: 'rgb(234, 179, 8)', data: donneesTemp, backgroundColor: 'rgba(234, 179, 8, 0.1)', tension: 0.3, fill: true }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
+    const elLine = document.getElementById('lineChart');
+    if (elLine) {
+        const ctxLine = elLine.getContext('2d');
+        lineChartInstance = new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: labelsChronologiques,
+                datasets: [
+                    { label: 'Charge CPU (%)', borderColor: 'rgb(147, 51, 234)', data: donneesCPU, backgroundColor: 'rgba(147, 51, 234, 0.1)', tension: 0.3, fill: true },
+                    { label: 'Température (°C)', borderColor: 'rgb(234, 179, 8)', data: donneesTemp, backgroundColor: 'rgba(234, 179, 8, 0.1)', tension: 0.3, fill: true }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
 
-    const ctxRadar = document.getElementById('radarChart').getContext('2d');
-    radarChartInstance = new Chart(ctxRadar, {
-        type: 'radar',
-        data: {
-            labels: ['Nominal', 'Alerte', 'Critique'],
-            datasets: [{ label: 'Niveau de Risque', data: [0, 0, 0], backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgb(59, 130, 246)' }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
+    const elRadar = document.getElementById('radarChart');
+    if (elRadar) {
+        const ctxRadar = elRadar.getContext('2d');
+        radarChartInstance = new Chart(ctxRadar, {
+            type: 'radar',
+            data: {
+                labels: ['Nominal', 'Alerte', 'Critique'],
+                datasets: [{ label: 'Niveau de Risque', data: [0, 0, 0], backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgb(59, 130, 246)' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
 }
 
 function changeActiveSite(siteKey) {
@@ -46,23 +52,37 @@ function changeActiveSite(siteKey) {
     labelsChronologiques = [];
     donneesCPU = [];
     donneesTemp = [];
-    document.getElementById('logsTableBody').innerHTML = '';
-    document.getElementById('predictive-alert-box').classList.add('hidden');
+    
+    const logsBody = document.getElementById('logsTableBody');
+    if (logsBody) logsBody.innerHTML = '';
+    
+    const alertBox = document.getElementById('predictive-alert-box');
+    if (alertBox) alertBox.classList.add('hidden');
+    
     modeCriseActif = false;
     stopperTousLesClignotements();
     rafraichirDashboard();
 }
 
 function stopperTousLesClignotements() {
-    const cpuCard = document.getElementById('cpu-value').closest('.bg-gray-900');
-    const tempCard = document.getElementById('temp-value').closest('.bg-gray-900');
-    cpuCard.className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between transition-all duration-500";
-    tempCard.className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between transition-all duration-500";
+    const cpuEl = document.getElementById('cpu-value');
+    const tempEl = document.getElementById('temp-value');
+    
+    if (cpuEl && cpuEl.closest('.bg-gray-900')) {
+        cpuEl.closest('.bg-gray-900').className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between transition-all duration-500";
+    }
+    if (tempEl && tempEl.closest('.bg-gray-900')) {
+        tempEl.closest('.bg-gray-900').className = "bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl flex items-center justify-between transition-all duration-500";
+    }
     configurationsClignotementActuelles = { cpu: false, temp: false };
 }
 
 function appliquerStyleClignotement(elementId, activer) {
-    const card = document.getElementById(elementId).closest('.bg-gray-900');
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const card = el.closest('.bg-gray-900');
+    if (!card) return;
+    
     if (activer) {
         card.className = "bg-red-950/80 border border-red-700 rounded-xl p-6 shadow-xl flex items-center justify-between animate-pulse transition-all duration-500";
     } else {
@@ -81,9 +101,13 @@ function rafraichirDashboard() {
             if (data && data.length > 0) {
                 const trame = data[0];
                 
-                document.getElementById('cpu-value').innerText = trame.cpu_usage_pct + ' %';
-                document.getElementById('temp-value').innerText = trame.cpu_temperature_celsius + ' °C';
-                document.getElementById('latency-value').innerText = trame.network_latency_ms + ' ms';
+                const cpuVal = document.getElementById('cpu-value');
+                const tempVal = document.getElementById('temp-value');
+                const latVal = document.getElementById('latency-value');
+                
+                if (cpuVal) cpuVal.innerText = trame.cpu_usage_pct + ' %';
+                if (tempVal) tempVal.innerText = trame.cpu_temperature_celsius + ' °C';
+                if (latVal) latVal.innerText = trame.network_latency_ms + ' ms';
 
                 fetch('/predict', {
                     method: 'POST',
@@ -110,19 +134,25 @@ function rafraichirDashboard() {
                         const pred = predResult.prediction;
                         
                         if (pred === 0) {
-                            statutElement.innerText = '🛡️ Nominal';
-                            statutElement.className = "text-xl font-black text-green-400 mt-1";
-                            alertBox.classList.add('hidden');
+                            if (statutElement) {
+                                statutElement.innerText = '🛡️ Nominal';
+                                statutElement.className = "text-xl font-black text-green-400 mt-1";
+                            }
+                            if (alertBox) alertBox.classList.add('hidden');
                             stopperTousLesClignotements();
                         } else if (pred === 1) {
-                            statutElement.innerText = '⚠️ Vigilance';
-                            statutElement.className = "text-xl font-black text-yellow-500 mt-1";
-                            alertBox.classList.add('hidden');
+                            if (statutElement) {
+                                statutElement.innerText = '⚠️ Vigilance';
+                                statutElement.className = "text-xl font-black text-yellow-500 mt-1";
+                            }
+                            if (alertBox) alertBox.classList.add('hidden');
                             stopperTousLesClignotements();
                         } else {
                             estCritique = true;
-                            statutElement.innerText = '🚨 Incident Imminent';
-                            statutElement.className = "text-xl font-black text-red-500 mt-1";
+                            if (statutElement) {
+                                statutElement.innerText = '🚨 Incident Imminent';
+                                statutElement.className = "text-xl font-black text-red-500 mt-1";
+                            }
                             
                             let causes = [];
                             let declencherCPU = false;
@@ -137,9 +167,11 @@ function rafraichirDashboard() {
                                 declencherTemp = true;
                             }
 
-                            alertText.innerHTML = `<b>Diagnostic de sécurité - Centre de Supervision :</b><br>Des anomalies physiques majeures compromettent la stabilité du site <b>${currentSite}</b> :<br>• ${causes.join('<br>• ')}.<br><span class="text-red-400 font-bold">Action requise : Déploiement d'une équipe technique sous un délai de 3 heures pour éviter l'arrêt des serveurs.</span>`;
+                            if (alertText) {
+                                alertText.innerHTML = `<b>Diagnostic de sécurité - Centre de Supervision :</b><br>Des anomalies physiques majeures compromettent la stabilité du site <b>${currentSite}</b> :<br>• ${causes.join('<br>• ')}.<br><span class="text-red-400 font-bold">Action requise : Déploiement d'une équipe technique sous un délai de 3 heures pour éviter l'arrêt des serveurs.</span>`;
+                            }
                             
-                            alertBox.classList.remove('hidden');
+                            if (alertBox) alertBox.classList.remove('hidden');
                             if (declencherCPU) appliquerStyleClignotement('cpu-value', true);
                             if (declencherTemp) appliquerStyleClignotement('temp-value', true);
 
@@ -151,12 +183,14 @@ function rafraichirDashboard() {
 
                         actualiserPlanningMaintenance(estCritique, trame.cpu_temperature_celsius);
 
-                        radarChartInstance.data.datasets[0].data = [
-                            predResult.probabilities.optimal,
-                            predResult.probabilities.warning,
-                            predResult.probabilities.critical
-                        ];
-                        radarChartInstance.update();
+                        if (radarChartInstance) {
+                            radarChartInstance.data.datasets[0].data = [
+                                predResult.probabilities.optimal,
+                                predResult.probabilities.warning,
+                                predResult.probabilities.critical
+                            ];
+                            radarChartInstance.update();
+                        }
                     }
                 });
 
@@ -170,7 +204,7 @@ function rafraichirDashboard() {
                     donneesCPU.shift();
                     donneesTemp.shift();
                 }
-                lineChartInstance.update();
+                if (lineChartInstance) lineChartInstance.update();
 
                 historiqueCompletTableau.unshift({
                     horodatage: heureFormat,
@@ -182,18 +216,20 @@ function rafraichirDashboard() {
                 });
 
                 const tableBody = document.getElementById('logsTableBody');
-                const nouvelleLigne = document.createElement('tr');
-                nouvelleLigne.className = "hover:bg-gray-900 border-b border-gray-800 transition-all";
-                nouvelleLigne.innerHTML = `
-                    <td class="p-4 text-blue-400">${heureFormat}</td>
-                    <td class="p-4 text-xs font-bold text-gray-400">${trame.server_id}</td>
-                    <td class="p-4">${trame.cpu_usage_pct} %</td>
-                    <td class="p-4">${trame.ram_usage_pct} %</td>
-                    <td class="p-4 text-yellow-500">${trame.cpu_temperature_celsius} °C</td>
-                    <td class="p-4 text-green-400">${trame.network_latency_ms} ms</td>
-                `;
-                tableBody.insertBefore(nouvelleLigne, tableBody.firstChild);
-                if (tableBody.children.length > 50) tableBody.removeChild(tableBody.lastChild);
+                if (tableBody) {
+                    const nouvelleLigne = document.createElement('tr');
+                    nouvelleLigne.className = "hover:bg-gray-900 border-b border-gray-800 transition-all";
+                    nouvelleLigne.innerHTML = `
+                        <td class="p-4 text-blue-400">${heureFormat}</td>
+                        <td class="p-4 text-xs font-bold text-gray-400">${trame.server_id}</td>
+                        <td class="p-4">${trame.cpu_usage_pct} %</td>
+                        <td class="p-4">${trame.ram_usage_pct} %</td>
+                        <td class="p-4 text-yellow-500">${trame.cpu_temperature_celsius} °C</td>
+                        <td class="p-4 text-green-400">${trame.network_latency_ms} ms</td>
+                    `;
+                    tableBody.insertBefore(nouvelleLigne, tableBody.firstChild);
+                    if (tableBody.children.length > 50) tableBody.removeChild(tableBody.lastChild);
+                }
             }
         })
         .catch(err => console.error('Erreur:', err));
@@ -201,8 +237,11 @@ function rafraichirDashboard() {
 
 function actualiserPlanningMaintenance(siteEnAvarie, currentTemp) {
     const planningBody = document.getElementById('planningTableBody');
+    if (!planningBody) return;
+
     const usureCalculee = (currentTemp > 70) ? (currentTemp * 0.4).toFixed(1) : (currentTemp * 0.2).toFixed(1);
-    document.getElementById('kpi-usure').innerText = usureCalculee + ' %';
+    const kpiUsure = document.getElementById('kpi-usure');
+    if (kpiUsure) kpiUsure.innerText = usureCalculee + ' %';
 
     let dakarRow = `
         <tr class="border-b border-gray-800 hover:bg-gray-950">
@@ -244,18 +283,30 @@ function actualiserPlanningMaintenance(siteEnAvarie, currentTemp) {
 }
 
 function simulerScenario() {
-    const cpu = parseInt(document.getElementById('sim-cpu').value);
-    const temp = parseInt(document.getElementById('sim-temp').value);
-    const lat = parseInt(document.getElementById('sim-lat').value);
+    const simCpu = document.getElementById('sim-cpu');
+    const simTemp = document.getElementById('sim-temp');
+    const simLat = document.getElementById('sim-lat');
+    
+    if (!simCpu || !simTemp || !simLat) return; // Sécurité anti-crash si la page n'est pas instanciée
 
-    document.getElementById('val-sim-cpu').innerText = cpu + ' %';
-    document.getElementById('val-sim-temp').innerText = temp + ' °C';
-    document.getElementById('val-sim-lat').innerText = lat + ' ms';
+    const cpu = parseInt(simCpu.value);
+    const temp = parseInt(simTemp.value);
+    const lat = parseInt(simLat.value);
+
+    const valCpu = document.getElementById('val-sim-cpu');
+    const valTemp = document.getElementById('val-sim-temp');
+    const valLat = document.getElementById('val-sim-lat');
+    
+    if (valCpu) valCpu.innerText = cpu + ' %';
+    if (valTemp) valTemp.innerText = temp + ' °C';
+    if (valLat) valLat.innerText = lat + ' ms';
 
     const card = document.getElementById('sim-response-card');
     const icon = document.getElementById('sim-icon');
     const status = document.getElementById('sim-status');
     const text = document.getElementById('sim-text');
+
+    if (!card || !icon || !status || !text) return;
 
     if (cpu >= 80 || temp >= 76) {
         card.className = "bg-red-950/40 p-6 rounded-xl border border-red-900 flex flex-col justify-center items-center text-center transition-all duration-300";
@@ -311,4 +362,54 @@ function exportToPDF() {
     doc.text(`REGISTRE DE TÉLÉMÉTRIE CAPTEURS - SITE ${currentSite}`, 14, 15);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Rapport d'extraction édité le : ${new Date().toLocaleString('fr-FR')}`,
+    doc.text(`Rapport d'extraction édité le : ${new Date().toLocaleString('fr-FR')}`, 14, 22);
+
+    const tableRows = [];
+    historiqueCompletTableau.forEach(row => {
+        tableRows.push([row.horodatage, row.site, row.cpu + ' %', row.ram + ' %', row.temp + ' °C', row.latence + ' ms']);
+    });
+
+    doc.autoTable({
+        head: [['Horodatage', 'Code Installation', 'Charge CPU', 'Mémoire RAM', 'Température', 'Latence']],
+        body: tableRows,
+        startY: 28,
+        theme: 'striped',
+        headStyles: { fillColor: [30, 41, 59] }
+    });
+
+    doc.save(`rapport_site_${currentSite}.pdf`);
+}
+
+function switchTab(tabId) {
+    const pDash = document.getElementById('page-dashboard');
+    const pAnal = document.getElementById('page-analytics');
+    const pLogs = document.getElementById('page-logs');
+    
+    if (pDash) pDash.classList.add('hidden');
+    if (pAnal) pAnal.classList.add('hidden');
+    if (pLogs) pLogs.classList.add('hidden');
+
+    const btnDash = document.getElementById('btn-dashboard');
+    const btnAnal = document.getElementById('btn-analytics');
+    const btnLogs = document.getElementById('btn-logs');
+
+    if (btnDash) btnDash.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
+    if (btnAnal) btnAnal.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
+    if (btnLogs) btnLogs.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
+
+    const pTitle = document.getElementById('page-title');
+
+    if (tabId === 'dashboard') {
+        if (pDash) pDash.classList.remove('hidden');
+        if (btnDash) btnDash.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
+        if (pTitle) pTitle.innerText = "Supervision Multi-Sites";
+    } else if (tabId === 'analytics') {
+        if (pAnal) pAnal.classList.remove('hidden');
+        if (btnAnal) btnAnal.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
+        if (pTitle) pTitle.innerText = "Gestion & Planification";
+    } else if (tabId === 'logs') {
+        if (pLogs) pLogs.classList.remove('hidden');
+        if (btnLogs) btnLogs.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
+        if (pTitle) pTitle.innerText = "Historique des Données";
+    }
+}
