@@ -19,7 +19,7 @@ DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql+psycopg2://postgres:po
 engine = None
 try:
     engine = create_engine(DATABASE_URL)
-except Exception as db_err:
+except Exception:
     engine = None
 
 models = {}
@@ -34,11 +34,10 @@ for model_key, file_name in model_files.items():
     if os.path.exists(path):
         models[model_key] = joblib.load(path)
 
-# Variables globales de stockage d'état pour créer une inertie physique logique
 etat_serveurs = {
     'RNT-PRD-01': {'cpu': 35.0, 'temp': 52.0},
     'RNT-BRX-02': {'cpu': 22.0, 'temp': 41.0},
-    'RNT-DKR-03': {'cpu': 75.0, 'temp': 72.0} # Démarre déjà chaud
+    'RNT-DKR-03': {'cpu': 75.0, 'temp': 72.0}
 }
 
 alerte_deja_envoyee = {
@@ -58,7 +57,7 @@ def envoyer_email_notification(site, cpu, temp):
         print(f"[Alerte Simulation] Email non envoyé (Variables manquantes) pour le site {site}")
         return
 
-    sujet = f"🚨 ALERTE CRITIQUE INFRASTRUCTURE - SITE {site}"
+    sujet = f"ALERTE CRITIQUE INFRASTRUCTURE - SITE {site}"
     corps = f"""Bonjour,
     
 Le système de supervision a détecté des anomalies physiques lourdes sur le site {site}.
@@ -110,31 +109,26 @@ def predict():
         return jsonify({'status': 'error', 'message': 'Modèle indisponible'}), 500
         
     try:
-        input_data = pd.DataFrame([{
-            'cpu_usage_pct': data['cpu_usage_pct'],
-            'ram_usage_pct': data['ram_usage_pct'],
-            'cpu_temperature_celsius': data['cpu_temperature_celsius'],
-            'disk_io_rate:': data.get('disk_io_rate', 120.0), # Gestion de la clé du dataset original
-            'disk_io_rate': data.get('disk_io_rate', 120.0),
-            'network_latency_ms': data['network_latency_ms']
-        }])
+        cpu = float(data.get('cpu_usage_pct', 50.0))
+        ram = float(data.get('ram_usage_pct', 70.0))
+        temp = float(data.get('cpu_temperature_celsius', 55.0))
+        disk = float(data.get('disk_io_rate', 120.0))
+        lat = float(data.get('network_latency_ms', 15.0))
         
-        # Nettoyage des colonnes pour correspondre exactement au modèle entraîné
-        if hasattr(current_model, 'feature_names_in_'):
-            input_data = input_data.reindex(columns=current_model.feature_names_in_, fillvalue=120.0)
-
-        prediction = int(current_model.predict(input_data)[0])
+        features = [[cpu, ram, temp, disk, lat]]
+        
+        prediction = int(current_model.predict(features)[0])
         
         site_actuel = data.get('site_id', 'RNT-PRD-01')
         if prediction == 2:
             if not alerte_deja_envoyee.get(site_actuel, False):
-                envoyer_email_notification(site_actuel, data['cpu_usage_pct'], data['cpu_temperature_celsius'])
+                envoyer_email_notification(site_actuel, cpu, temp)
                 alerte_deja_envoyee[site_actuel] = True
         else:
             alerte_deja_envoyee[site_actuel] = False
         
         if hasattr(current_model, "predict_proba"):
-            probabilities = current_model.predict_proba(input_data)[0].tolist()
+            probabilities = current_model.predict_proba(features)[0].tolist()
         else:
             probabilities = [0.0, 0.0, 0.0]
             probabilities[prediction] = 1.0
@@ -144,9 +138,9 @@ def predict():
             'model_used': selected_model_key,
             'prediction': prediction,
             'probabilities': {
-                'optimal': probabilities[0],
-                'warning': probabilities[1],
-                'critical': probabilities[2]
+                'optimal': max(0.0, min(probabilities[0], 1.0)),
+                'warning': max(0.0, min(probabilities[1], 1.0)),
+                'critical': max(0.0, min(probabilities[2], 1.0))
             }
         })
     except Exception as e:
@@ -163,30 +157,26 @@ def get_live_data():
             df = pd.read_sql_query(query, engine)
             if not df.empty:
                 return jsonify(df.to_dict(orient='records'))
-    except Exception as sql_err:
+    except Exception:
         pass
 
     timestamp = pd.Timestamp.now().isoformat()
     
-    # ÉVOLUTION PHYSIQUE LISSÉE : On applique une micro-variation à l'état précédent
     if site == 'RNT-BRX-02':
         etat_serveurs[site]['cpu'] += random.uniform(-2.0, 2.0)
         etat_serveurs[site]['temp'] += random.uniform(-0.5, 0.5)
-        # Bornage de sécurité pour rester nominal
         etat_serveurs[site]['cpu'] = max(15.0, min(etat_serveurs[site]['cpu'], 35.0))
         etat_serveurs[site]['temp'] = max(38.0, min(etat_serveurs[site]['temp'], 45.0))
         status = 0
         
     elif site == 'RNT-DKR-03':
-        # Dakar dérive vers le haut et reste bloqué dans une vraie zone critique stable
         etat_serveurs[site]['cpu'] += random.uniform(-1.0, 3.0)
         etat_serveurs[site]['temp'] += random.uniform(-0.2, 1.0)
-        # Bornage pour bloquer le serveur dans sa surchauffe
         etat_serveurs[site]['cpu'] = max(82.0, min(etat_serveurs[site]['cpu'], 94.0))
         etat_serveurs[site]['temp'] = max(76.5, min(etat_serveurs[site]['temp'], 83.0))
         status = 2
         
-    else: # Paris
+    else:
         etat_serveurs[site]['cpu'] += random.uniform(-3.0, 3.0)
         etat_serveurs[site]['temp'] += random.uniform(-1.0, 1.0)
         etat_serveurs[site]['cpu'] = max(30.0, min(etat_serveurs[site]['cpu'], 55.0))
