@@ -246,6 +246,20 @@ function actualiserPlanningMaintenance(siteEnAvarie, currentTemp) {
     const kpiUsure = document.getElementById('kpi-usure');
     if (kpiUsure) kpiUsure.innerText = usureCalculee + ' %';
 
+    const kpiCards = document.querySelectorAll('#page-analytics .bg-gray-950 p');
+    if (kpiCards.length >= 3) {
+        if (currentSite === 'RNT-DKR-03') { 
+            kpiCards[0].innerText = "99.12 %"; 
+            kpiCards[2].innerText = "1.38";    
+        } else if (currentSite === 'RNT-BRX-02') { 
+            kpiCards[0].innerText = "99.95 %";
+            kpiCards[2].innerText = "1.15";
+        } else { 
+            kpiCards[0].innerText = "99.84 %";
+            kpiCards[2].innerText = "1.21";
+        }
+    }
+
     let dakarRow = `
         <tr class="border-b border-gray-800 hover:bg-gray-950">
             <td class="p-3 font-mono text-xs text-gray-500">REF-2026-003</td>
@@ -396,23 +410,4 @@ function switchTab(tabId) {
     const btnAnal = document.getElementById('btn-analytics');
     const btnLogs = document.getElementById('btn-logs');
 
-    if (btnDash) btnDash.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
-    if (btnAnal) btnAnal.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
-    if (btnLogs) btnLogs.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition-all";
-
-    const pTitle = document.getElementById('page-title');
-
-    if (tabId === 'dashboard') {
-        if (pDash) pDash.classList.remove('hidden');
-        if (btnDash) btnDash.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        if (pTitle) pTitle.innerText = "Supervision Multi-Sites";
-    } else if (tabId === 'analytics') {
-        if (pAnal) pAnal.classList.remove('hidden');
-        if (btnAnal) btnAnal.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        if (pTitle) pTitle.innerText = "Gestion & Planification";
-    } else if (tabId === 'logs') {
-        if (pLogs) pLogs.classList.remove('hidden');
-        if (btnLogs) btnLogs.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-all";
-        if (pTitle) pTitle.innerText = "Historique des Données";
-    }
-}
+    if (btnDash) btnDash.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray
