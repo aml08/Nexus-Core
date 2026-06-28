@@ -1,3 +1,45 @@
+{% if not session.get('user') %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Core - Connexion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans flex h-screen justify-center items-center m-0">
+    <div class="bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-2xl w-full max-width-[400px] max-w-md text-center">
+        <div class="flex justify-center items-center space-x-3 mb-2">
+            <i class="fa-solid fa-industry text-3xl text-blue-500"></i>
+            <span class="text-2xl font-black tracking-wider text-white font-sans">NEXUS CORE</span>
+        </div>
+        <p class="text-xs text-gray-400 mb-8 uppercase tracking-widest font-semibold">Supervision & Maintenance Prédictive</p>
+        
+        {% if erreur %}
+            <div class="bg-red-950/60 border border-red-900 text-red-400 p-3 rounded-lg text-xs font-semibold mb-4 text-left flex items-center space-x-2">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span>{{ erreur }}</span>
+            </div>
+        {% endif %}
+        
+        <form action="/login" method="POST" class="space-y-5 text-left">
+            <div>
+                <label for="username" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Identifiant</label>
+                <input type="text" id="username" name="username" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-all font-semibold">
+            </div>
+            <div>
+                <label for="password" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Code d'accès</label>
+                <input type="password" id="password" name="password" required class="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-all font-mono">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-3 rounded-lg transition-all shadow-lg shadow-blue-600/20 mt-2">
+                Se connecter au Core
+            </button>
+        </form>
+    </div>
+</body>
+</html>
+{% else %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -33,9 +75,15 @@
                 </button>
             </nav>
         </div>
-        <div class="p-6 border-t border-gray-800 text-xs text-gray-500 space-y-1">
-            <p class="font-semibold text-gray-400">Nexus Core - Tous droits réservés</p>
-            <p>M2 Data Science - 2026</p>
+        <div class="p-6 border-t border-gray-800 flex flex-col space-y-3">
+            <a href="/logout" class="flex items-center space-x-2 text-xs font-bold text-red-400 hover:text-red-300 transition-all">
+                <i class="fa-solid fa-power-off"></i>
+                <span>Déconnexion de la session</span>
+            </a>
+            <div class="text-xs text-gray-500 space-y-1">
+                <p class="font-semibold text-gray-400">Nexus Core - Tous droits réservés</p>
+                <p>M2 Data Science - 2026</p>
+            </div>
         </div>
     </aside>
 
@@ -163,83 +211,3 @@
                 </div>
 
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                    <h3 class="text-base font-bold text-white mb-2"><i class="fa-solid fa-flask-vial text-yellow-500 mr-2"></i>Simulateur de Charge & Évaluation Système</h3>
-                    <p class="text-xs text-gray-400 mb-6">Modifiez manuellement les paramètres physiques ci-dessous pour éprouver la solidité de l'infrastructure et observer les seuils de tolérance du système.</p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="space-y-4 bg-gray-950 p-5 rounded-xl border border-gray-800">
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-1">
-                                    <span class="text-purple-400">SIMULATION CHARGE CPU</span>
-                                    <span id="val-sim-cpu" class="text-white">45 %</span>
-                                </div>
-                                <input type="range" id="sim-cpu" min="10" max="100" value="45" oninput="simulerScenario()" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
-                            </div>
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-1">
-                                    <span class="text-yellow-500">SIMULATION TEMPÉRATURE</span>
-                                    <span id="val-sim-temp" class="text-white">52 °C</span>
-                                </div>
-                                <input type="range" id="sim-temp" min="30" max="95" value="52" oninput="simulerScenario()" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500">
-                            </div>
-                            <div>
-                                <div class="flex justify-between text-xs font-bold mb-1">
-                                    <span class="text-green-400">SIMULATION LATENCE RÉSEAU</span>
-                                    <span id="val-sim-lat" class="text-white">15 ms</span>
-                                </div>
-                                <input type="range" id="sim-lat" min="2" max="150" value="15" oninput="simulerScenario()" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-green-400">
-                            </div>
-                        </div>
-                        
-                        <div id="sim-response-card" class="bg-gray-950 p-6 rounded-xl border border-gray-800 flex flex-col justify-center items-center text-center transition-all duration-300">
-                            <div id="sim-icon" class="p-4 bg-green-950/50 text-green-400 rounded-full mb-3">
-                                <i class="fa-solid fa-square-check text-3xl"></i>
-                            </div>
-                            <h4 id="sim-status" class="text-lg font-black text-green-400 uppercase">Évaluation : Structure Résiliente</h4>
-                            <p id="sim-text" class="text-xs text-gray-400 mt-2 max-w-sm">Les charges simulées sont parfaitement absorbées par le système. Stabilité garantie.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="page-logs" class="space-y-6 hidden">
-                <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                        <div>
-                            <h3 class="text-base font-bold text-white">Registre des Données Capteurs</h3>
-                            <p class="text-xs text-gray-400 mt-0.5">Données de télémétrie lues en base de données PostgreSQL</p>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-3">
-                            <button onclick="exportToCSV()" class="bg-gray-800 hover:bg-gray-700 text-xs font-semibold px-4 py-2 rounded-lg border border-gray-700 text-gray-200 transition-all">
-                                <i class="fa-solid fa-file-csv mr-2 text-green-500"></i>Exporter en CSV
-                            </button>
-                            <button onclick="exportToPDF()" class="bg-gray-800 hover:bg-gray-700 text-xs font-semibold px-4 py-2 rounded-lg border border-gray-700 text-gray-200 transition-all">
-                                <i class="fa-solid fa-file-pdf mr-2 text-red-500"></i>Télécharger le PDF
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="overflow-x-auto rounded-lg border border-gray-800">
-                        <table id="dataTable" class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-950 text-gray-400 text-xs uppercase font-bold border-b border-gray-800">
-                                    <th class="p-4">Horodatage</th>
-                                    <th class="p-4">Code Site</th>
-                                    <th class="p-4">CPU (%)</th>
-                                    <th class="p-4">RAM (%)</th>
-                                    <th class="p-4">Température (°C)</th>
-                                    <th class="p-4">Latence (ms)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="logsTableBody" class="divide-y divide-gray-800 text-sm font-mono text-gray-300"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-        </main>
-    </div>
-
-    <script src="/static/js/dashboard.js"></script>
-</body>
-</html>
