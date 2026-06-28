@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify, render_template
+from flask_httpauth import HTTPBasicAuth
+from werkzeug.security import generate_password_hash, check_password_hash
 import joblib
 import pandas as pd
 import os
@@ -14,6 +16,17 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, '..', 'static')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
+auth = HTTPBasicAuth()
+
+users = {
+    "admin_nexus": generate_password_hash("RenaultSecure2026")
+}
+
+@auth.verify_password
+def verify_password(username, password):
+    if username in users and check_password_hash(users.get(username), password):
+        return username
+    return None
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql+psycopg2://postgres:postgres@localhost:5432/nexus_db')
 
@@ -87,10 +100,12 @@ Ceci est une notification automatique de sécurité - Nexus Core."""
         print(f"Échec de l'envoi du courriel : {email_err}")
 
 @app.route('/')
+@auth.login_required
 def home():
     return render_template('index.html')
 
 @app.route('/api/model-comparison', methods=['GET'])
+@auth.login_required
 def get_comparison():
     path = os.path.join(BASE_DIR, '..', 'models', 'models_comparison.json')
     if os.path.exists(path):
@@ -160,6 +175,7 @@ def predict():
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
 @app.route('/api/live-data', methods=['GET'])
+@auth.login_required
 def get_live_data():
     global etat_serveurs
     site = request.args.get('site', 'RNT-PRD-01')
