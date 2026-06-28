@@ -1,5 +1,4 @@
-from flask import Flask, request, jsonify, render_template
-from flask_httpauth import HTTPBasicAuth
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 import joblib
 import pandas as pd
@@ -10,23 +9,30 @@ import smtplib
 import time
 from email.mime.text import MIMEText
 from sqlalchemy import create_engine
+from functools import wraps
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, '..', 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, '..', 'static')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
-auth = HTTPBasicAuth()
+
+# Clé secrète requise pour chiffrer les cookies de session utilisateur
+app.secret_key = os.environ.get('SECRET_KEY', 'NexusCoreSecretKeySecure2026')
 
 users = {
     "admin_nexus": generate_password_hash("RenaultSecure2026")
 }
 
-@auth.verify_password
-def verify_password(username, password):
-    if username in users and check_password_hash(users.get(username), password):
-        return username
-    return None
+# Décorateur personnalisé pour remplacer l'ancien auth.login_required
+def login_requis(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            # Si l'utilisateur n'est pas loggé, on le renvoie vers l'index pour qu'il voie le formulaire
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql+psycopg2://postgres:postgres@localhost:5432/nexus_db')
 
@@ -100,12 +106,28 @@ Ceci est une notification automatique de sécurité - Nexus Core."""
         print(f"Échec de l'envoi du courriel : {email_err}")
 
 @app.route('/')
-@auth.login_required
 def home():
+    # Géré dynamiquement par index.html (affiche le login si non connecté, ou le dashboard si connecté)
     return render_template('index.html')
 
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    if username in users and check_password_hash(users.get(username), password):
+        session['user'] = username
+        return redirect(url_for('home'))  # Redirection propre vers la racine (/) pour éviter l'erreur 405
+    
+    return render_template('index.html', erreur="Identifiant ou code d'accès incorrect.")
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect(url_for('home'))
+
 @app.route('/api/model-comparison', methods=['GET'])
-@auth.login_required
+@login_requis
 def get_comparison():
     path = os.path.join(BASE_DIR, '..', 'models', 'models_comparison.json')
     if os.path.exists(path):
@@ -175,7 +197,7 @@ def predict():
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
 @app.route('/api/live-data', methods=['GET'])
-@auth.login_required
+@login_requis
 def get_live_data():
     global etat_serveurs
     site = request.args.get('site', 'RNT-PRD-01')
