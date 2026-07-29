@@ -79,7 +79,7 @@ NEXUS-CORE/
 
 ### 2. Cloner le Dépôt
 
-git clone https://github.com/votre-compte/nexus-core.git
+git clone https://github.com/aml08/nexus-core.git
 cd nexus-core
 
 ### 3. Création et Activation de l'Environnement Virtuel
