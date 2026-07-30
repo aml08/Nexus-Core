@@ -9,12 +9,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans flex h-screen justify-center items-center m-0">
-    <div class="bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-2xl w-full max-width-[400px] max-w-md text-center">
+    <div class="bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md text-center">
         <div class="flex justify-center items-center space-x-3 mb-2">
             <i class="fa-solid fa-industry text-3xl text-blue-500"></i>
             <span class="text-2xl font-black tracking-wider text-white font-sans">NEXUS CORE</span>
         </div>
-        <p class="text-xs text-gray-400 mb-8 uppercase tracking-widest font-semibold">Supervision & Maintenance Prédictive</p>
+        <p class="text-xs text-gray-400 mb-8 uppercase tracking-widest font-semibold">Supervision & Maintenance Prédictive (Random Forest)</p>
         
         {% if erreur %}
             <div class="bg-red-950/60 border border-red-900 text-red-400 p-3 rounded-lg text-xs font-semibold mb-4 text-left flex items-center space-x-2">
@@ -113,7 +113,7 @@
                         <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                     </div>
                     <div>
-                        <h4 class="text-red-200 font-bold text-sm">ALERTE SÉCURITÉ INFRASTRUCTURE</h4>
+                        <h4 class="text-red-200 font-bold text-sm">ALERTE SÉCURITÉ INFRASTRUCTURE (RANDOM FOREST)</h4>
                         <p class="text-red-300 text-xs mt-0.5" id="predictive-alert-text"></p>
                     </div>
                 </div>
@@ -212,7 +212,7 @@
 
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-xl">
                     <h3 class="text-base font-bold text-white mb-2"><i class="fa-solid fa-flask-vial text-yellow-500 mr-2"></i>Simulateur de Charge & Évaluation Système</h3>
-                    <p class="text-xs text-gray-400 mb-6">Modifiez manuellement les paramètres physiques ci-dessous pour éprouver la solidité de l'infrastructure et observer les seuils de tolérance du système.</p>
+                    <p class="text-xs text-gray-400 mb-6">Modifiez manuellement les paramètres physiques ci-dessous pour éprouver la solidité de l'infrastructure et observer les seuils de tolérance du système (Évalué par Random Forest).</p>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div class="space-y-4 bg-gray-950 p-5 rounded-xl border border-gray-800">
