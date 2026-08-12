@@ -89,6 +89,7 @@ NEXUS-CORE/
 ```bash
 git clone [https://github.com/aml08/nexus-core.git](https://github.com/aml08/nexus-core.git)
 cd nexus-core
+```
 
 ### 3. Création et Activation de l'Environnement Virtuel
 Sous Linux / macOS :
@@ -96,17 +97,20 @@ Sous Linux / macOS :
 ```bash
 python3 -m venv venv
 source venv/bin/activate
+```
 
 ```powersell
 Sous Windows (PowerShell) :
 python -m venv venv
 .\venv\Scripts\Activate.ps1
+```
 
 ### 4. Installation des Dépendances
 
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
+```
 
 ### 5. Configuration de la Base de Données
 Exécutez le script SQL schema.sql sur votre instance PostgreSQL pour instancier les tables server_metrics, server_logs et l'index B-Tree composite.
@@ -115,10 +119,12 @@ Configurez les variables d'environnement système :
 ```bash
 export DATABASE_URL="postgresql://utilisateur:motdepasse@localhost:5432/nom_de_base"
 export FLASK_SECRET_KEY="CleSecuriseeNexus2026"
+```
 
 ### 6. Lancement de l'Application Web
 ```bash
 python app.py
+```
 
 L'application sera accessible sur : http://127.0.0.1:5000
 
