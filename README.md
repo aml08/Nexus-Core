@@ -99,8 +99,8 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-```powersell
 Sous Windows (PowerShell) :
+```powersell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
